@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="OmniCore.Core/OmniCore.Core.csproj" />
+  <Project Path="OmniCore.Hybrid/OmniCore.Hybrid.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+  <Project Path="OmniCore.Modules.FMMS/OmniCore.Modules.FMMS.csproj" />
+</Solution>

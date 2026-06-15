@@ -1,0 +1,196 @@
+﻿@inherits LayoutComponentBase
+@using OmniCore.Core.Interfaces
+@using OmniCore.Hybrid.Interfaces
+@using System.Globalization
+@inject IEnumerable<IModule> Modules
+@inject IAppSettingsService AppSettings
+@inject NavigationManager NavManager
+
+<MudThemeProvider Theme="@_customTheme" @bind-IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+
+@* Needed for dialogs *@
+<MudDialogProvider />
+
+@* Needed for snackbars *@
+<MudSnackbarProvider />
+
+<MudLayout>
+	<!-- Верхняя панель приложения -->
+	<MudAppBar Dense="true" Elevation="1" Color="Color.Primary">
+		<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+		<MudText Typo="Typo.h6" Class="ml-2">Omni Core</MudText>
+		<MudSpacer />
+
+		<!-- Переключатель языка -->
+		<MudSelect T="string" @bind-Value="CurrentCulture" Variant="Variant.Text" Class="mr-2" Style="width: 100px;">
+			<MudSelectItem Value="@("ru-RU")">🇷🇺 Русский</MudSelectItem>
+			<MudSelectItem Value="@("en-US")">🇬🇧 English</MudSelectItem>
+		</MudSelect>
+
+		<!-- Переключатель темы -->
+		<MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+					   Color="Color.Inherit"
+					   OnClick="@ToggleTheme" />
+	</MudAppBar>
+
+	<!-- Боковое меню навигации -->
+	<MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+		<MudNavMenu>
+			@foreach (var module in Modules.OrderBy(m => m.Title))
+			{
+				// Проверяем, не отключил ли пользователь весь модуль
+				if (!AppSettings.IsRouteEnabled(module.BaseRoute))
+				{
+					continue;
+				}
+
+				var items = module.GetNavigationItems();
+				if (items == null || !items.Any())
+				{
+					continue;
+				}
+
+				<MudNavGroup Title="@module.Title" Icon="@module.Icon" Expanded="true">
+					@foreach (var item in items)
+					{
+						var fullRoute = GetFullRoute(module, item);
+
+						// Проверяем, не отключена ли конкретная страница
+						if (AppSettings.IsRouteEnabled(fullRoute))
+						{
+							<MudNavLink Href="@fullRoute"
+										Icon="@item.Icon"
+										Match="NavLinkMatch.Prefix"
+										IconColor="Color.Primary">
+								@item.Title
+							</MudNavLink>
+						}
+					}
+				</MudNavGroup>
+			}
+
+			<MudDivider Class="my-4" />
+
+			<!-- Глобальные настройки приложения -->
+			<MudNavLink Href="/settings" Icon="@Icons.Material.Filled.Settings" Match="NavLinkMatch.Prefix">
+				Settings
+			</MudNavLink>
+		</MudNavMenu>
+	</MudDrawer>
+
+	<!-- Основной контент страницы -->
+	<MudMainContent Class="pa-4">
+		@Body
+	</MudMainContent>
+
+	<!-- Провайдер для всплывающих уведомлений (Snackbar) -->
+	<MudSnackbarProvider />
+</MudLayout>
+
+@code {
+	private bool _drawerOpen = true;
+	private bool _isDarkMode = false;
+	private bool _isLoaded = false;
+
+	private readonly MudTheme _customTheme = new()
+	{
+		PaletteDark = new PaletteDark()
+		{
+			TableStriped = MudBlazor.Utilities.MudColor.Parse("32323b"),
+			TableHover = MudBlazor.Utilities.MudColor.Parse("2c2c33")
+		}
+	};
+
+	// Текущая культура, привязанная к UI
+	private string CurrentCulture
+	{
+		get => CultureInfo.CurrentCulture.Name;
+		set
+		{
+			if (CultureInfo.CurrentCulture.Name != value)
+			{
+				var culture = new CultureInfo(value);
+				CultureInfo.CurrentCulture = culture;
+				CultureInfo.CurrentUICulture = culture;
+				CultureInfo.DefaultThreadCurrentCulture = culture;
+				CultureInfo.DefaultThreadCurrentUICulture = culture;
+
+				// Сохраняем выбор в настройки
+				AppSettings.Settings.Language = value;
+
+				_ = SaveSettingsAsync();
+
+				if (_isLoaded)
+				{
+					NavManager.NavigateTo(NavManager.Uri, forceLoad: true);
+				}
+				else
+				{
+					StateHasChanged();
+				}
+			}
+		}
+	}
+
+	private async Task SaveSettingsAsync()
+	{
+		try
+		{
+			await AppSettings.SaveAsync();
+		}
+		catch (Exception ex)
+		{
+			// Логирование ошибки сохранения настроек
+			System.Diagnostics.Debug.WriteLine($"[Settings] Error saving language settings: {ex.Message}");
+		}
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		// Загружаем глобальные настройки при первом запуске
+		await AppSettings.LoadAsync();
+
+		// Применяем сохраненный язык, если он отличается от системного
+		if (!string.IsNullOrEmpty(AppSettings.Settings.Language) &&
+			AppSettings.Settings.Language != CultureInfo.CurrentCulture.Name)
+		{
+			var culture = new CultureInfo(AppSettings.Settings.Language);
+			CultureInfo.CurrentCulture = culture;
+			CultureInfo.CurrentUICulture = culture;
+			CultureInfo.DefaultThreadCurrentCulture = culture;
+			CultureInfo.DefaultThreadCurrentUICulture = culture;
+
+			StateHasChanged();
+		}
+
+		_isLoaded = true;
+	}
+
+	private void ToggleDrawer()
+	{
+		_drawerOpen = !_drawerOpen;
+	}
+
+	private void ToggleTheme()
+	{
+		_isDarkMode = !_isDarkMode;
+	}
+
+	protected override void OnInitialized()
+	{
+		var count = Modules.Count();
+		System.Diagnostics.Debug.WriteLine($"[Layout] Найдено модулей: {count}");
+
+		foreach (var m in Modules)
+		{
+			System.Diagnostics.Debug.WriteLine($"[Layout] Модуль: {m.Title}, Route: {m.BaseRoute}");
+		}
+	}
+
+	private string GetFullRoute(IModule module, INavigationItem item)
+	{
+		// Формируем полный путь, избегая двойных слешей (например, "/fmms" + "scanner" = "/fmms/scanner")
+		return $"{module.BaseRoute.TrimEnd('/')}/{item.RelativeRoute.TrimStart('/')}";
+	}
+}
