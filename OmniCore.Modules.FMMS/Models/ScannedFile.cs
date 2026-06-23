@@ -4,7 +4,7 @@ using System.Text;
 
 namespace OmniCore.Modules.FMMS.Models
 {
-    public class ScannedFile
+    public record class ScannedFile
     {
         public string Name { get; set; } = string.Empty;
         public string Extension { get; set; } = string.Empty;
@@ -19,7 +19,6 @@ namespace OmniCore.Modules.FMMS.Models
         public string? MD5 { get; set; }
         public string? SHA256 { get; set; }
         public string? SHA512 { get; set; }
-
 
         public string SizeFormatted { get; set; } = string.Empty;
     }

@@ -5,6 +5,7 @@ namespace OmniCore.Hybrid.Models
     public class AppSettings
     {
         public string Language { get; set; } = "ru-RU";
+        public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
 
         [JsonInclude]
         public HashSet<string> DisabledRoutes { get; set; } = new(StringComparer.OrdinalIgnoreCase);

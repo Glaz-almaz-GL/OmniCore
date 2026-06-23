@@ -2,4 +2,60 @@
 
 <h1>Hello, world!</h1>
 
+<MudStack Class="mud-height-full overflow-hidden"
+          Justify="Justify.FlexStart">
+    <MudToolBar Dense="true"
+                Gutters="false"
+                Class="toolbox-toolbar">
+        <MudText class="mx-2 toolbox-title"
+                 Color="Color.Primary"
+                 Typo="Typo.h6">
+            Components
+        </MudText>
+        <MudSpacer />
+        <MudToggleIconButton Icon="@Icons.Material.Outlined.PushPin"
+                             ToggledIcon="@Icons.Material.Filled.PushPin" />
+    </MudToolBar>
+    <MudTextField Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Class="px-2 toolbox-search"
+                  Clearable="true"
+                  DebounceInterval="300"
+                  FullWidth="true"
+                  Label="Search"
+                  Margin="Margin.Dense"
+                  T="string"
+                  Variant="Variant.Filled" />
+    <div class="flex-grow-1 overflow-y-auto toolbox-contents">
+        <MudNavMenu>
+            @* @foreach (var category in Categories)
+            {
+                <MudNavGroup Expanded="true"
+                             @key="@category"
+                             Title="@category.Name">
+                    @foreach (var toolboxItem in category.Items)
+                    {
+                        <MudTooltip Arrow="true"
+                                    Inline="false"
+                                    Placement="@Placement.Right"
+                                    RootStyle="width: unset;"
+                                    Text="@toolboxItem.Description">
+                            <MudDraggable DraggingClass="dnd-dragging"
+                                          Item="@(toolboxItem.Component with {Id = Guid.NewGuid().ToString("N")})"
+                                          @key="@(toolboxItem.GetHashCode())"
+                                          T="ComponentDefinition"
+                                          ZoneIdentifier="@ToolboxDropZone">
+                                <MudNavLink Icon="@toolboxItem.Icon"
+                                            Match="NavLinkMatch.All">
+                                    <MudText Class="text-ellipsis">@toolboxItem.Name</MudText>
+                                </MudNavLink>
+                            </MudDraggable>
+                        </MudTooltip>
+                    }
+                </MudNavGroup>
+            } *@
+        </MudNavMenu>
+    </div>
+</MudStack>
+
 Welcome to your new app.

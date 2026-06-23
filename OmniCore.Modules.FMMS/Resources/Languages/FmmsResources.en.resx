@@ -315,4 +315,25 @@
   <data name="Table_SHA512" xml:space="preserve">
     <value>SHA-512</value>
   </data>
+  <data name="Settings_Saved_Success" xml:space="preserve">
+    <value>Settings saved</value>
+  </data>
+  <data name="Directory_Analyzer_Title" xml:space="preserve">
+    <value>Анализ директорий</value>
+  </data>
+  <data name="Column_Name_Dir" xml:space="preserve">
+    <value>Directory Name</value>
+  </data>
+  <data name="Column_Files_Count" xml:space="preserve">
+    <value>Files Count</value>
+  </data>
+  <data name="Settings_DirectoryScan_Title" xml:space="preserve">
+    <value>Directory scanning settings</value>
+  </data>
+  <data name="Settings_IncludeHiddenFolders" xml:space="preserve">
+    <value>Scan hidden directories</value>
+  </data>
+  <data name="Settings_DisplayOptions_Title" xml:space="preserve">
+    <value>Display settings</value>
+  </data>
 </root>

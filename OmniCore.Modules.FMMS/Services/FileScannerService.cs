@@ -1,76 +1,152 @@
-﻿using OmniCore.Modules.FMMS.Interfaces;
+﻿using Microsoft.Extensions.Logging;
+using OmniCore.Modules.FMMS.Interfaces;
 using OmniCore.Modules.FMMS.Models;
 using OmniCore.Modules.FMMS.Resources.Settings;
+using System.Runtime.CompilerServices;
 
 namespace OmniCore.Modules.FMMS.Services
 {
-    internal sealed class FileScannerService : IFileScannerService
+    internal sealed class FileScannerService(ILogger<FileScannerService>? logger = null) : IFileScannerService
     {
-        public async Task ScanDirectoryAsync(
+        private readonly ILogger<FileScannerService>? _logger = logger;
+
+        private readonly EnumerationOptions _enumerationOptions = new()
+        {
+            RecurseSubdirectories = true,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.ReparsePoint,
+            ReturnSpecialDirectories = false
+        };
+
+        public async IAsyncEnumerable<ScannedFile> ScanDirectoryAsync(
             string directoryPath,
             FilesScanningSettings settings,
             IProgress<double> progress,
-            Action<ScannedFile> onFileScanned,
-            CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            string[] files = Directory.GetFiles(directoryPath, "*.*", SearchOption.AllDirectories);
-            int totalFiles = files.Length;
-            int processedFiles = 0;
-            int dirPathLength = directoryPath.Length + 1;
+            IEnumerable<string> filePaths;
+            try
+            {
+                filePaths = Directory.EnumerateFiles(directoryPath, "*.*", _enumerationOptions);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                yield break;
+            }
 
-            foreach (string filePath in files)
+            int processedFiles = 0;
+            int dirPathLength = Path.TrimEndingDirectorySeparator(directoryPath).Length + 1;
+
+            foreach (string filePath in filePaths)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                FileInfo fileInfo = new(filePath);
-                string relativeFilePath;
-                //relativeFilePath = Path.GetRelativePath(directoryPath, filePath); // Слишком неэффективный из-за неоднакратного вычисления
+                ScannedFile? scannedFile = null;
 
-                relativeFilePath = filePath[dirPathLength..]; // Используем substring с длиной пути папки
-
-                ScannedFile scannedFile = new()
+                try
                 {
-                    Name = relativeFilePath,
-                    Extension = fileInfo.Extension.ToLowerInvariant(),
-                    FullPath = fileInfo.FullName,
-                    Size = fileInfo.Length,
-                    IsArchive = settings.CustomArchiveExtensions.Contains(fileInfo.Extension.ToLowerInvariant().TrimStart('.'))
-                };
+                    scannedFile = await ProcessFileAsync(filePath, dirPathLength, settings, cancellationToken).ConfigureAwait(false);
 
-                // 1. Подсчет страниц (упрощенный пример для PDF и кастомных правил)
-                if (scannedFile.Extension == ".pdf")
-                {
-                    try { scannedFile.PagesCount = FilePageService.GetPagesCountInPdf(filePath); }
-                    catch { scannedFile.PagesCount = -1; } // Ошибка чтения
+                    await CalculateHashes(settings, scannedFile, filePath, cancellationToken).ConfigureAwait(false);
                 }
-                else if (settings.PagesCountCustomRules.TryGetValue(scannedFile.Extension, out int customPages))
+                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
                 {
-                    scannedFile.PagesCount = customPages; // Заглушка для кастомных правил
+                    _logger?.LogError(ex, "File skipped: \"{FilePath}\".", filePath);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Unexpected error: \"{FilePath}\".", filePath);
                 }
 
-                // 2. Вычисление хешей (только если включено в настройках)
-                if (settings.CalculateMD5)
+                if (scannedFile is not null)
                 {
-                    scannedFile.MD5 = await FileHashService.ComputeMD5Async(filePath, cancellationToken);
+                    yield return scannedFile;
                 }
 
-                if (settings.CalculateSHA256)
-                {
-                    scannedFile.SHA256 = await FileHashService.ComputeSHA256Async(filePath, cancellationToken);
-                }
-
-                if (settings.CalculateSHA512)
-                {
-                    scannedFile.SHA512 = await FileHashService.ComputeSHA512Async(filePath, cancellationToken);
-                }
-
-                // Передаем файл в UI
-                onFileScanned(scannedFile);
-
-                // Обновляем прогресс
                 processedFiles++;
-                progress.Report((double)processedFiles / totalFiles * 100.0);
+                progress?.Report(processedFiles);
             }
+        }
+
+        private async Task CalculateHashes(FilesScanningSettings settings, ScannedFile scannedFile, string filePath, CancellationToken cancellationToken)
+        {
+            if (settings.CalculateMD5)
+            {
+                scannedFile.MD5 = await FileHashService.ComputeMD5Async(filePath, cancellationToken).ConfigureAwait(false);
+
+                if (_logger?.IsEnabled(LogLevel.Debug) == true)
+                {
+                    _logger?.LogDebug("MD5 Hash calculated: \"{MD5}\"", scannedFile.MD5);
+                }
+            }
+
+            if (settings.CalculateSHA256)
+            {
+                scannedFile.SHA256 = await FileHashService.ComputeSHA256Async(filePath, cancellationToken).ConfigureAwait(false);
+
+                if (_logger?.IsEnabled(LogLevel.Debug) == true)
+                {
+                    _logger?.LogDebug("SHA256 Hash calculated: \"{SHA256}\"", scannedFile.SHA256);
+                }
+            }
+
+            if (settings.CalculateSHA512)
+            {
+                scannedFile.SHA512 = await FileHashService.ComputeSHA512Async(filePath, cancellationToken).ConfigureAwait(false);
+
+                if (_logger?.IsEnabled(LogLevel.Debug) == true)
+                {
+                    _logger?.LogDebug("SHA512 Hash calculated: \"{SHA512}\"", scannedFile.SHA512);
+                }
+            }
+        }
+
+        private async Task<ScannedFile> ProcessFileAsync(string filePath, int dirPathLength, FilesScanningSettings settings, CancellationToken cancellationToken = default)
+        {
+            FileInfo fileInfo = new(filePath);
+
+            // Substring эффективнее
+            string relativeFilePath = filePath.Length > dirPathLength
+                ? filePath[dirPathLength..]
+                : string.Empty;
+
+            ScannedFile result = new()
+            {
+                Name = relativeFilePath,
+                Extension = fileInfo.Extension.ToLowerInvariant(),
+                FullPath = fileInfo.FullName,
+                Size = fileInfo.Length,
+                IsArchive = settings.CustomArchiveExtensions.Contains(fileInfo.Extension.ToLowerInvariant().TrimStart('.'))
+            };
+
+            // Подсчет страниц (синхронная операция чтения файла)
+            if (result.Extension == ".pdf")
+            {
+                try
+                {
+                    result.PagesCount = await Task.Run(() =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return FilePageService.GetPagesCountInPdf(filePath);
+                    }, cancellationToken).ConfigureAwait(false);
+
+                    if (_logger?.IsEnabled(LogLevel.Debug) == true)
+                    {
+                        _logger?.LogDebug("PDF pages count for {FilePath}: {Count}", filePath, result.PagesCount);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.PagesCount = -1;
+                    _logger?.LogError(ex, "File page count error for \"{FilePath}\"; Returned -1", filePath);
+                }
+            }
+            else if (settings.PagesCountCustomRules.TryGetValue(result.Extension, out int customPages))
+            {
+                result.PagesCount = customPages;
+            }
+
+            return result;
         }
     }
 }

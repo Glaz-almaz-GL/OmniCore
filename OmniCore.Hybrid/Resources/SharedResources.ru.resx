@@ -118,30 +118,30 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Settings_Title" xml:space="preserve">
-    <value>Settings</value>
+    <value>Настройки</value>
   </data>
   <data name="Settings_Tab_General" xml:space="preserve">
-    <value>General Settings</value>
+    <value>Основные настройки</value>
   </data>
   <data name="Settings_Visibility_Description" xml:space="preserve">
-    <value>Settings that allow you to enable or disable various modules</value>
+    <value>Настройки, позволяющие включать или отключать различные модули</value>
   </data>
   <data name="Settings_Visibility_Title" xml:space="preserve">
-    <value>Module visibility settings</value>
+    <value>Настройки видимости модулей</value>
   </data>
   <data name="Settings_EnableModule" xml:space="preserve">
-    <value>Enabled</value>
+    <value>Включен</value>
   </data>
   <data name="Settings_ModuleDisabledDescription" xml:space="preserve">
-    <value>Pages are customizable but hidden from users while the module is disabled.</value>
+    <value>Страницы доступны для настройки, но скрыты для пользователей, пока модуль отключён.</value>
   </data>
   <data name="Settings_ModuleDisabled" xml:space="preserve">
-    <value>This module has no subpages to manage.</value>
+    <value>У этого модуля нет вложенных страниц для управления.</value>
   </data>
   <data name="Settings_Saved_Success" xml:space="preserve">
-    <value>Settings saved</value>
+    <value>Настройки сохранены</value>
   </data>
   <data name="Settings_Error_Saving" xml:space="preserve">
-    <value>Error saving settings</value>
+    <value>Ошибка сохранения настроек</value>
   </data>
 </root>

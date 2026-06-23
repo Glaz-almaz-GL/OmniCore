@@ -5,11 +5,10 @@ namespace OmniCore.Modules.FMMS.Interfaces
 {
     public interface IFileScannerService
     {
-        Task ScanDirectoryAsync(
+        IAsyncEnumerable<ScannedFile> ScanDirectoryAsync(
             string directoryPath,
             FilesScanningSettings settings,
             IProgress<double> progress,
-            Action<ScannedFile> onFileScanned,
-            CancellationToken cancellationToken);
+            CancellationToken cancellationToken = default);
     }
 }

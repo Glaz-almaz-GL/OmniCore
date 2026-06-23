@@ -1,15 +1,18 @@
 ﻿using OmniCore.Hybrid.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace OmniCore.Hybrid.Interfaces
 {
     public interface IAppSettingsService
     {
         AppSettings Settings { get; }
-        Task LoadAsync();
-        Task SaveAsync();
+
+        /// <summary>
+        /// Событие, уведомляющее об изменении настроек.
+        /// </summary>
+        event Action<AppSettings>? OnSettingsChanged;
+
+        Task LoadAsync(CancellationToken cancellationToken = default);
+        Task SaveAsync(CancellationToken cancellationToken = default);
         bool IsRouteEnabled(string route);
         void ToggleRoute(string route);
     }

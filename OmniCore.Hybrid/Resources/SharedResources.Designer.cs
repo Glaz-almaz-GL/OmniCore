@@ -59,5 +59,86 @@ namespace OmniCore.Hybrid.Resources {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Enabled.
+        /// </summary>
+        public static string Settings_EnableModule {
+            get {
+                return ResourceManager.GetString("Settings_EnableModule", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Error saving settings.
+        /// </summary>
+        public static string Settings_Error_Saving {
+            get {
+                return ResourceManager.GetString("Settings_Error_Saving", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на This module has no subpages to manage..
+        /// </summary>
+        public static string Settings_ModuleDisabled {
+            get {
+                return ResourceManager.GetString("Settings_ModuleDisabled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Pages are customizable but hidden from users while the module is disabled..
+        /// </summary>
+        public static string Settings_ModuleDisabledDescription {
+            get {
+                return ResourceManager.GetString("Settings_ModuleDisabledDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Settings saved.
+        /// </summary>
+        public static string Settings_Saved_Success {
+            get {
+                return ResourceManager.GetString("Settings_Saved_Success", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на General Settings.
+        /// </summary>
+        public static string Settings_Tab_General {
+            get {
+                return ResourceManager.GetString("Settings_Tab_General", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Settings.
+        /// </summary>
+        public static string Settings_Title {
+            get {
+                return ResourceManager.GetString("Settings_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Settings that allow you to enable or disable various modules.
+        /// </summary>
+        public static string Settings_Visibility_Description {
+            get {
+                return ResourceManager.GetString("Settings_Visibility_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Module visibility settings.
+        /// </summary>
+        public static string Settings_Visibility_Title {
+            get {
+                return ResourceManager.GetString("Settings_Visibility_Title", resourceCulture);
+            }
+        }
     }
 }

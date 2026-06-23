@@ -1,232 +1,307 @@
-﻿@using Microsoft.Extensions.Localization
+﻿@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
 @using MudBlazor;
 @using OmniCore.Modules.FMMS.Enums
 @using OmniCore.Modules.FMMS.Resources.Languages
-@using OmniCore.Modules.FMMS.Resources.Settings
 @using OmniCore.Modules.FMMS.Services
 @inject IStringLocalizer<FmmsResources> Localizer
 @inject FmmsSettingsService SettingsService
+@inject ISnackbar Snackbar
 
 <MudStack Spacing="4">
 
-	<!-- Секция 1: Общие настройки и хеширование -->
-	<MudCard>
-		<MudCardHeader>
-			<CardHeaderContent>
-				<MudText Typo="Typo.h6">@Localizer["Settings_General_Title"]</MudText>
-			</CardHeaderContent>
-		</MudCardHeader>
-		<MudCardContent>
-			<MudStack Spacing="3">
-				<MudSwitch T="bool"
-						   @bind-Value="Settings.ScanArchives"
-						   Label="@Localizer["Settings_ScanArchives"]"
-						   Color="Color.Primary" />
+    <!-- ... Секция 1: Общие настройки и хеширование ... -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Localizer["Settings_General_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudSwitch T="bool"
+                           Value="@SettingsService.FilesScanningSettings.ScanArchives"
+                           ValueChanged="async(bool val) => { SettingsService.FilesScanningSettings.ScanArchives = val; await SaveAsync();}"
+                           Label="@Localizer["Settings_ScanArchives"]"
+                           Color="Color.Primary" />
 
-				<MudSelect T="FileSizeType"
-						   @bind-Value="Settings.DisplayedSizeType"
-						   Label="@Localizer["Settings_DisplayedSizeType"]"
-						   Variant="Variant.Outlined"
-						   Dense="true">
-					<MudSelectItem T="FileSizeType" Value="@FileSizeType.B">@Localizer["SizeType_B"]</MudSelectItem>
-					<MudSelectItem T="FileSizeType" Value="@FileSizeType.KB">@Localizer["SizeType_KB"]</MudSelectItem>
-					<MudSelectItem T="FileSizeType" Value="@FileSizeType.MB">@Localizer["SizeType_MB"]</MudSelectItem>
-					<MudSelectItem T="FileSizeType" Value="@FileSizeType.GB">@Localizer["SizeType_GB"]</MudSelectItem>
-				</MudSelect>
+                <MudSelect T="FileSizeType"
+                           Value="@SettingsService.FilesScanningSettings.DisplayedSizeType"
+                           ValueChanged="async(FileSizeType val) => { SettingsService.FilesScanningSettings.DisplayedSizeType = val; await SaveAsync();}"
+                           Label="@Localizer["Settings_DisplayedSizeType"]"
+                           Variant="Variant.Outlined"
+                           Dense="true">
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.B">@Localizer["SizeType_B"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.KB">@Localizer["SizeType_KB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.MB">@Localizer["SizeType_MB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.GB">@Localizer["SizeType_GB"]</MudSelectItem>
+                </MudSelect>
 
-				<MudDivider />
-				<MudText Typo="Typo.subtitle1">@Localizer["Settings_Hashing_Title"]</MudText>
+                <MudDivider />
+                <MudText Typo="Typo.subtitle1">@Localizer["Settings_Hashing_Title"]</MudText>
 
-				<MudSwitch T="bool"
-						   @bind-Value="Settings.CalculateSHA256"
-						   Label="SHA-256 (Рекомендуется)"
-						   Color="Color.Primary" />
-				<MudSwitch T="bool"
-						   @bind-Value="Settings.CalculateSHA512"
-						   Label="SHA-512 (Максимальная надежность, медленнее)"
-						   Color="Color.Primary" />
-				<MudSwitch T="bool"
-						   @bind-Value="Settings.CalculateMD5"
-						   Label="MD5 (Только для быстрого поиска дубликатов)"
-						   Color="Color.Primary" />
-			</MudStack>
-		</MudCardContent>
-	</MudCard>
+                <MudSwitch T="bool"
+                           Value="@SettingsService.FilesScanningSettings.CalculateSHA256"
+                           ValueChanged="async(bool val) => { SettingsService.FilesScanningSettings.CalculateSHA256 = val; await SaveAsync();}"
+                           Label="SHA-256 (Рекомендуется)"
+                           Color="Color.Primary" />
+                <MudSwitch T="bool"
+                           Value="@SettingsService.FilesScanningSettings.CalculateSHA512"
+                           ValueChanged="async(bool val) => { SettingsService.FilesScanningSettings.CalculateSHA512 = val; await SaveAsync();}"
+                           Label="SHA-512 (Максимальная надежность, медленнее)"
+                           Color="Color.Primary" />
+                <MudSwitch T="bool"
+                           Value="@SettingsService.FilesScanningSettings.CalculateMD5"
+                           ValueChanged="async(bool val) => { SettingsService.FilesScanningSettings.CalculateMD5 = val; await SaveAsync();}"
+                           Label="MD5 (Только для быстрого поиска дубликатов)"
+                           Color="Color.Primary" />
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
 
-	<!-- Секция 2: Видимость колонок -->
-	<MudCard>
-		<MudCardHeader>
-			<CardHeaderContent>
-				<MudText Typo="Typo.h6">@Localizer["Settings_Columns_Title"]</MudText>
-				<MudText Typo="Typo.body2" Color="Color.Secondary">@Localizer["Settings_Columns_Description"]</MudText>
-			</CardHeaderContent>
-		</MudCardHeader>
-		<MudCardContent>
-			<MudGrid>
-				@foreach (var kvp in Settings.ColumnVisibleSettings)
-				{
-					<MudItem xs="12" sm="6" md="4">
-						<MudSwitch T="bool"
-								   @bind-Value="Settings.ColumnVisibleSettings[kvp.Key]"
-								   Label="@GetLocalizedColumnName(kvp.Key)"
-								   Color="Color.Primary"
-								   Class="mb-2" />
-					</MudItem>
-				}
-			</MudGrid>
-		</MudCardContent>
-	</MudCard>
+    <!-- ... Секция 2: Видимость колонок ... -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Localizer["Settings_Columns_Title"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@Localizer["Settings_Columns_Description"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                @foreach (var kvp in SettingsService.FilesScanningSettings.ColumnVisibleSettings)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSwitch T="bool"
+                                   Value="@SettingsService.FilesScanningSettings.ColumnVisibleSettings[kvp.Key]"
+                                   ValueChanged="async(bool val) => { SettingsService.FilesScanningSettings.ColumnVisibleSettings[kvp.Key] = val; await SaveAsync();}"
+                                   Label="@GetLocalizedColumnName(kvp.Key)"
+                                   Color="Color.Primary"
+                                   Class="mb-2" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
 
-	<!-- Секция 3: Кастомные расширения архивов -->
-	<MudCard>
-		<MudCardHeader>
-			<CardHeaderContent>
-				<MudText Typo="Typo.h6">@Localizer["Settings_Archives_Title"]</MudText>
-			</CardHeaderContent>
-		</MudCardHeader>
-		<MudCardContent>
-			<MudText Typo="Typo.body2" Class="mb-2">@Localizer["Settings_CustomArchiveExtensions_Hint"]</MudText>
-			<MudChipSet T="string">
-				@foreach (var ext in Settings.CustomArchiveExtensions)
-				{
-					<MudChip T="string"
-							 Text="@ext"
-							 Color="Color.Primary"
-							 OnClose="@(() => RemoveExtension(ext))"
-							 CloseIcon="@Icons.Material.Filled.Close" />
-				}
-			</MudChipSet>
-		</MudCardContent>
-	</MudCard>
+    <!-- ... Секция 3: Пользовательские правила подсчета страниц ... -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Localizer["Settings_PagesRules_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.FlexStart" AlignItems="AlignItems.End">
+                    <MudTextField T="string"
+                                  @bind-Value="_newRuleExt"
+                                  Label="@Localizer["Settings_PagesRules_Extension"]"
+                                  Variant="Variant.Outlined"
+                                  Style="max-width: 150px;"
+                                  OnKeyDown="@HandleEnterKeyPages" />
+                    <MudNumericField T="int"
+                                     @bind-Value="_newRulePages"
+                                     Label="@Localizer["Settings_PagesRules_Value"]"
+                                     Min="1"
+                                     Variant="Variant.Outlined"
+                                     Style="max-width: 150px;" />
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddPageRule">
+                        @Localizer["Common_Add"]
+                    </MudButton>
+                </MudStack>
 
-	<!-- Секция 4: Пользовательские правила подсчета страниц -->
-	<MudCard>
-		<MudCardHeader>
-			<CardHeaderContent>
-				<MudText Typo="Typo.h6">@Localizer["Settings_PagesRules_Title"]</MudText>
-			</CardHeaderContent>
-		</MudCardHeader>
-		<MudCardContent>
-			<MudStack Spacing="3">
-				<!-- Форма добавления нового правила -->
-				<MudStack Row="true" Spacing="2" AlignItems="AlignItems.End">
-					<MudTextField T="string"
-								  @bind-Value="_newRuleExt"
-								  Label="@Localizer["Settings_PagesRules_Extension"]"
-								  Variant="Variant.Outlined"
-								  Style="max-width: 200px;" />
-					<MudNumericField T="int"
-									 @bind-Value="_newRulePages"
-									 Label="@Localizer["Settings_PagesRules_Value"]"
-									 Min="1"
-									 Variant="Variant.Outlined"
-									 Style="max-width: 150px;" />
-					<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddPageRule">
-						@Localizer["Common_Add"]
-					</MudButton>
-				</MudStack>
+                @if (SettingsService.FilesScanningSettings.PagesCountCustomRules.Any())
+                {
+                    <MudTable Items="SettingsService.FilesScanningSettings.PagesCountCustomRules.ToList()" Hover="true" Striped="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>@Localizer["Settings_PagesRules_Extension"]</MudTh>
+                            <MudTh>@Localizer["Settings_PagesRules_Value"]</MudTh>
+                            <MudTh Style="width:100px;"></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Расширение">@context.Key</MudTd>
+                            <MudTd DataLabel="Значение">@context.Value</MudTd>
+                            <MudTd DataLabel="Действие">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => RemovePageRule(context.Key))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@Localizer["Settings_PagesRules_Empty"]</MudText>
+                }
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
 
-				<!-- Таблица существующих правил -->
-				@if (Settings.PagesCountCustomRules.Any())
-				{
-					<MudTable Items="Settings.PagesCountCustomRules.ToList()" Hover="true" Striped="true" Elevation="0">
-						<HeaderContent>
-							<MudTh>@Localizer["Settings_PagesRules_Extension"]</MudTh>
-							<MudTh>@Localizer["Settings_PagesRules_Value"]</MudTh>
-							<MudTh Style="width:100px;"></MudTh>
-						</HeaderContent>
-						<RowTemplate>
-							<MudTd DataLabel="Расширение">@context.Key</MudTd>
-							<MudTd DataLabel="Значение">@context.Value</MudTd>
-							<MudTd DataLabel="Действие">
-								<MudIconButton Icon="@Icons.Material.Filled.Delete"
-											   Color="Color.Error"
-											   Size="Size.Small"
-											   OnClick="@(() => RemovePageRule(context.Key))" />
-							</MudTd>
-						</RowTemplate>
-					</MudTable>
-				}
-				else
-				{
-					<MudText Typo="Typo.body2" Color="Color.Secondary">@Localizer["Settings_PagesRules_Empty"]</MudText>
-				}
-			</MudStack>
-		</MudCardContent>
-	</MudCard>
+    <!-- ... Секция 4: Кастомные расширения архивов ... -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Localizer["Settings_Archives_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body2">@Localizer["Settings_CustomArchiveExtensions_Hint"]</MudText>
 
-	<!-- Кнопка сохранения -->
-	<MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-2">
-		<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="SaveAsync" StartIcon="@Icons.Material.Filled.Save">
-			@Localizer["Common_Save"]
-		</MudButton>
-	</MudStack>
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.End">
+                    <MudTextField T="string"
+                                  @bind-Value="_newArchiveExt"
+                                  Label="@Localizer["Settings_PagesRules_Extension"]"
+                                  Placeholder=".rar, .7z"
+                                  Variant="Variant.Outlined"
+                                  Style="max-width: 200px;"
+                                  OnKeyDown="@HandleEnterKey" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddArchiveExtension">
+                        @Localizer["Common_Add"]
+                    </MudButton>
+                </MudStack>
 
+                <MudChipSet T="string">
+                    @foreach (var ext in SettingsService.FilesScanningSettings.CustomArchiveExtensions.OrderBy(e => e))
+                    {
+                        <MudChip T="string"
+                                 Text="@ext"
+                                 Color="Color.Primary"
+                                 OnClose="@(() => RemoveArchiveExtension(ext))"
+                                 CloseIcon="@Icons.Material.Filled.Close" />
+                    }
+                </MudChipSet>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- ... Секция 5: Настройки сканирования директорий ... -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Localizer["Settings_DirectoryScan_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudSwitch T="bool"
+                           Value="@SettingsService.DirectoryScanningSettings.IncludeHidden"
+                           ValueChanged="async(bool val) => { SettingsService.DirectoryScanningSettings.IncludeHidden = val; await SaveAsync();}"
+                           Label="@Localizer["Settings_IncludeHiddenFolders"]"
+                           Color="Color.Primary" />
+
+                <MudDivider />
+
+                <MudText Typo="Typo.subtitle1">@Localizer["Settings_DisplayOptions_Title"]</MudText>
+
+                <MudSelect T="FileSizeType"
+                           Value="@SettingsService.DirectoryScanningSettings.DisplayedSizeType"
+                           ValueChanged="async(FileSizeType val) => { SettingsService.DirectoryScanningSettings.DisplayedSizeType = val; await SaveAsync();}"
+                           Label="@Localizer["Settings_DisplayedSizeType"]"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Style="max-width: 300px;">
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.B">@Localizer["SizeType_B"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.KB">@Localizer["SizeType_KB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.MB">@Localizer["SizeType_MB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.GB">@Localizer["SizeType_GB"]</MudSelectItem>
+                </MudSelect>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
 </MudStack>
 
+<div style="height: 50px;" />
+
 @code {
-	// УБРАЛИ [Parameter] public FilesScanningSettings Settings { get; set; } = new();
+    // Переменные для формы архивов
+    private string _newArchiveExt = "";
 
-	// Вместо этого используем свойство-обертку, которое ссылается на сервис
-	private FilesScanningSettings Settings => SettingsService.Settings;
+    // Переменные для формы правил страниц
+    private string _newRuleExt = "";
+    private int _newRulePages = 1;
 
-	// Временные переменные для формы добавления правила
-	private string _newRuleExt = "";
-	private int _newRulePages = 1;
+    private string GetLocalizedColumnName(FileColumn column)
+    {
+        return Localizer[$"Column_{column}"]?.Value ?? column.ToString();
+    }
 
-	private string GetLocalizedColumnName(FileColumn column)
-	{
-		return Localizer[$"Column_{column}"]?.Value ?? column.ToString();
-	}
+    #region Archive Extensions Logic
 
-	private void AddPageRule()
-	{
-		if (!string.IsNullOrWhiteSpace(_newRuleExt))
-		{
-			var ext = _newRuleExt.Trim().ToLowerInvariant();
-			if (!ext.StartsWith("."))
-			{
-				ext = "." + ext;
-			}
+    private async Task AddArchiveExtension()
+    {
+        if (!string.IsNullOrWhiteSpace(_newArchiveExt))
+        {
+            var ext = _newArchiveExt.Trim().ToLowerInvariant();
+            if (!ext.StartsWith(".")) ext = "." + ext;
 
-			Settings.PagesCountCustomRules[ext] = _newRulePages;
+            if (SettingsService.FilesScanningSettings.CustomArchiveExtensions.Add(ext))
+            {
+                await SaveAsync();
+            }
+            _newArchiveExt = "";
+        }
+    }
 
-			_newRuleExt = "";
-			_newRulePages = 1;
-		}
-	}
+    private async Task RemoveArchiveExtension(string ext)
+    {
+        SettingsService.FilesScanningSettings.CustomArchiveExtensions.Remove(ext);
+        await SaveAsync();
+    }
 
-	private void RemovePageRule(string key)
-	{
-		Settings.PagesCountCustomRules.Remove(key);
-	}
+    #endregion
 
-	private void RemoveExtension(string ext)
-	{
-		Settings.CustomArchiveExtensions.Remove(ext);
-	}
+    #region Page Rules Logic
 
-	private async Task SaveAsync()
-	{
+    private void AddPageRule()
+    {
+        if (!string.IsNullOrWhiteSpace(_newRuleExt))
+        {
+            var ext = _newRuleExt.Trim().ToLowerInvariant();
+            if (!ext.StartsWith(".")) ext = "." + ext;
 
-		// Теперь сохраняем именно те настройки, которые отображаются в UI (из сервиса)
-		await SettingsService.SaveAsync();
+            SettingsService.FilesScanningSettings.PagesCountCustomRules[ext] = _newRulePages;
+            _ = SaveAsync();
 
-		// Опционально: показать уведомление об успехе
-		// Snackbar.Add("Настройки сохранены", Severity.Success);
-	}
+            _newRuleExt = "";
+            _newRulePages = 1;
+        }
+    }
 
-	/// <summary>
-	/// Гарантируем, что настройки загружены при первом открытии страницы.
-	/// В идеале LoadAsync должен вызываться при старте приложения, но это страховка.
-	/// </summary>
-	protected override async Task OnInitializedAsync()
-	{
-		// Если настройки еще не загружены (например, файл не существовал при старте),
-		// пытаемся загрузить их сейчас.
-		if (Settings.CustomArchiveExtensions.Count == 0 && Settings.PagesCountCustomRules.Count == 0)
-		{
-			await SettingsService.LoadAsync();
-		}
-	}
+    private async Task RemovePageRule(string key)
+    {
+        SettingsService.FilesScanningSettings.PagesCountCustomRules.Remove(key);
+        await SaveAsync();
+    }
+
+    #endregion
+
+    private async Task SaveAsync()
+    {
+        await SettingsService.SaveAsync();
+        Snackbar.Add(Localizer["Settings_Saved_Success"], Severity.Success);
+    }
+
+    private async Task HandleEnterKey(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter") await AddArchiveExtension();
+    }
+
+    private void HandleEnterKeyPages(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter") AddPageRule();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Загружаем настройки, если они еще не загружены
+        if (SettingsService.FilesScanningSettings.CustomArchiveExtensions.Count == 0 &&
+            SettingsService.FilesScanningSettings.PagesCountCustomRules.Count == 0)
+        {
+            await SettingsService.LoadAsync();
+        }
+    }
 }

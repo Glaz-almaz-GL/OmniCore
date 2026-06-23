@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Runtime.InteropServices.Marshalling;
+using System.Security.Cryptography;
 
 namespace OmniCore.Modules.FMMS.Services
 {
@@ -7,61 +8,59 @@ namespace OmniCore.Modules.FMMS.Services
         #region SHA256
         public static string ComputeSHA256(string filePath)
         {
-            using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read);
-            SHA256 sHA256 = SHA256.Create();
-            byte[] hashBytes = sHA256.ComputeHash(stream);
-            string hashString = Convert.ToHexStringLower(hashBytes);
-            return hashString;
+            return ComputeHash(filePath, SHA256.Create());
         }
 
-        public static async Task<string> ComputeSHA256Async(string filePath, CancellationToken cancellationToken = default)
+        public static Task<string> ComputeSHA256Async(string filePath, CancellationToken cancellationToken = default)
         {
-            await using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
-            SHA256 sha256 = SHA256.Create();
-            byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
-            string hashString = Convert.ToHexStringLower(hashBytes);
-            return hashString;
+            return ComputeHashAsync(filePath, SHA256.Create(), cancellationToken);
         }
         #endregion
 
         #region SHA512
         public static string ComputeSHA512(string filePath)
         {
-            using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read);
-            SHA512 sHA512 = SHA512.Create();
-            byte[] hashBytes = sHA512.ComputeHash(stream);
-            string hashString = Convert.ToHexStringLower(hashBytes);
-            return hashString;
+            return ComputeHash(filePath, SHA512.Create());
         }
 
-        public static async Task<string> ComputeSHA512Async(string filePath, CancellationToken cancellationToken = default)
+        public static Task<string> ComputeSHA512Async(string filePath, CancellationToken cancellationToken = default)
         {
-            await using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
-            SHA512 sha256 = SHA512.Create();
-            byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
-            string hashString = Convert.ToHexStringLower(hashBytes);
-            return hashString;
+            return ComputeHashAsync(filePath, SHA512.Create(), cancellationToken);
         }
         #endregion
 
         #region MD5
         public static string ComputeMD5(string filePath)
         {
-            using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read);
-            MD5 mD5 = MD5.Create();
-            byte[] hashBytes = mD5.ComputeHash(stream);
-            string hashString = Convert.ToHexStringLower(hashBytes);
-            return hashString;
+            return ComputeHash(filePath, MD5.Create());
         }
 
-        public static async Task<string> ComputeMD5Async(string filePath, CancellationToken cancellationToken = default)
+        public static Task<string> ComputeMD5Async(string filePath, CancellationToken cancellationToken = default)
         {
-            await using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
-            MD5 mD5 = MD5.Create();
-            byte[] hashBytes = await mD5.ComputeHashAsync(stream, cancellationToken);
-            string hashString = Convert.ToHexStringLower(hashBytes);
-            return hashString;
+            return ComputeHashAsync(filePath, MD5.Create(), cancellationToken);
         }
         #endregion
+
+        private static string ComputeHash(string filePath, HashAlgorithm hash)
+        {
+            using (hash)
+            {
+                using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: false);
+                byte[] hashBytes = hash.ComputeHash(stream);
+                string hashString = Convert.ToHexStringLower(hashBytes);
+                return hashString;
+            }
+        }
+
+        private static async Task<string> ComputeHashAsync(string filePath, HashAlgorithm hash, CancellationToken cancellationToken = default)
+        {
+            using (hash)
+            {
+                await using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+                byte[] hashBytes = await hash.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+                string hashString = Convert.ToHexStringLower(hashBytes);
+                return hashString;
+            }
+        }
     }
 }

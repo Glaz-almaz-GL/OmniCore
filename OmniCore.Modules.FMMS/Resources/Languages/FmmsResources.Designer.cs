@@ -79,6 +79,15 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         }
         
         /// <summary>
+        ///   Ищет локализованную строку, похожую на Files Count.
+        /// </summary>
+        public static string Column_Files_Count {
+            get {
+                return ResourceManager.GetString("Column_Files_Count", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Ищет локализованную строку, похожую на Full Path.
         /// </summary>
         public static string Column_FullPath {
@@ -129,6 +138,15 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         public static string Column_Name {
             get {
                 return ResourceManager.GetString("Column_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Directory Name.
+        /// </summary>
+        public static string Column_Name_Dir {
+            get {
+                return ResourceManager.GetString("Column_Name_Dir", resourceCulture);
             }
         }
         
@@ -210,6 +228,15 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         public static string Common_Save {
             get {
                 return ResourceManager.GetString("Common_Save", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Directory Analyze.
+        /// </summary>
+        public static string Directory_Analyzer_Title {
+            get {
+                return ResourceManager.GetString("Directory_Analyzer_Title", resourceCulture);
             }
         }
         
@@ -489,6 +516,15 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         public static string Settings_PagesRules_Value {
             get {
                 return ResourceManager.GetString("Settings_PagesRules_Value", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Settings saved.
+        /// </summary>
+        public static string Settings_Saved_Success {
+            get {
+                return ResourceManager.GetString("Settings_Saved_Success", resourceCulture);
             }
         }
         

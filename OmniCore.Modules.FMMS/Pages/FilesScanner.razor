@@ -1,50 +1,43 @@
-﻿@page "/fmms/files_scanner"
+﻿@using System.Diagnostics
+@using System.Text
+@using CommunityToolkit.Maui.Storage
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
 @using MudBlazor
 @using OmniCore.Modules.FMMS.Enums
-@using OmniCore.Modules.FMMS.Models
 @using OmniCore.Modules.FMMS.Interfaces
+@using OmniCore.Modules.FMMS.Models
 @using OmniCore.Modules.FMMS.Resources.Languages
 @using OmniCore.Modules.FMMS.Services
-@using CommunityToolkit.Maui.Storage
-@using Microsoft.Extensions.Localization
-@using Microsoft.AspNetCore.Components.Web
-@using System.Diagnostics
-@using System.Text
 @inject IFileScannerService ScannerService
 @inject FmmsSettingsService SettingsService
 @inject IStringLocalizer<FmmsResources> Localizer
 @inject ISnackbar Snackbar
 @inject IClipboardService Clipboard
+@page "/fmms/files_scanner"
 
-<MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+<MudContainer @onkeydown="OnDataGridKeyDown" tabindex="0" MaxWidth="MaxWidth.False" Class="mt-4">
 	<MudStack Spacing="3">
 
 		<!-- Панель управления -->
-		<MudCard>
+		<MudCard Outlined="true">
 			<MudCardContent>
-				<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+				<MudStack Row="true" Spacing="2">
 					<MudTextField T="string"
-								  @bind-Value="_folderPath"
-								  Label="@Localizer["Scanner_FolderPath"]"
-								  Variant="Variant.Outlined"
-								  ReadOnly="true"
-								  Style="flex-grow: 1;" />
+									@bind-Value="_folderPath"
+									Placeholder="@Localizer["Scanner_FolderPath"]"
+									Disabled="@_isScanning"
+									Variant="Variant.Outlined"/>
 
-					<MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="SelectFolderAsync">
-						@Localizer["Scanner_SelectFolder"]
-					</MudButton>
+					<MudIconButton Icon="@Icons.Material.Filled.FolderOpen" Disabled="@_isScanning" Style="width: 56px; height: 56px;" Variant="Variant.Outlined" Color="Color.Primary" OnClick="SelectFolderAsync" />
 
 					@if (!_isScanning)
 					{
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartScanningAsync" Disabled="@string.IsNullOrWhiteSpace(_folderPath)">
-							@Localizer["Scanner_Start"]
-						</MudButton>
+						<MudIconButton Icon="@Icons.Material.Filled.Start" Style="width: 56px; height: 56px;" Variant="Variant.Filled" Color="Color.Primary" OnClick="StartScanningAsync" Disabled="@(string.IsNullOrWhiteSpace(_folderPath) || !Directory.Exists(_folderPath))" />
 					}
 					else
 					{
-						<MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="CancelScanning">
-							@Localizer["Scanner_Cancel"]
-						</MudButton>
+						<MudIconButton Icon="@Icons.Material.Filled.Cancel" Style="width: 56px; height: 56px;" Variant="Variant.Filled" Color="Color.Error" OnClick="CancelScanning" />
 					}
 				</MudStack>
 
@@ -56,9 +49,9 @@
 		</MudCard>
 
 		<!-- Таблица результатов с горизонтальной прокруткой -->
-		<MudCard>
+		<MudCard Outlined="true">
 			<MudCardContent Style="padding: 0;">
-				<div @onkeydown="OnDataGridKeyDown" tabindex="0" style="overflow-x: auto; max-height: 100%; overflow-y: auto;">
+				<div style="overflow-x: auto; max-height: 100%; overflow-y: auto;">
 					<MudDataGrid T="ScannedFile"
 								 Items="@_scannedFiles"
 								 SelectedItems="@_selectedRows"
@@ -80,7 +73,7 @@
 								 RowsPerPage="20">
 						<Columns>
 							<SelectColumn />
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.Id])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.Id])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="int" Property="x => _scannedFiles.IndexOf(x) + 1" Title="@Localizer["Table_Id"]">
 									<CellTemplate>
@@ -89,17 +82,17 @@
 								</PropertyColumn>
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.Name])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.Name])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="string" Property="x => x.Name" Title="@Localizer["Table_Name"]" />
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.Extension])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.Extension])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="string" Property="x => x.Extension" Title="@Localizer["Table_Extension"]" />
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.Size])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.Size])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="long" Filterable="false" Property="x => x.Size" Title="@Localizer["Table_Size"]">
 									<CellTemplate>
@@ -108,7 +101,7 @@
 								</PropertyColumn>
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.CompressedSize])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.CompressedSize])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="long" Property="x => x.CompressedSize" Title="@Localizer["Table_Compressed_Size"]">
 									<CellTemplate>
@@ -117,7 +110,7 @@
 								</PropertyColumn>
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.UnCompressedSize])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.UnCompressedSize])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="long" Property="x => x.UnCompressedSize" Title="@Localizer["Table_UnCompressed_Size"]">
 									<CellTemplate>
@@ -126,7 +119,7 @@
 								</PropertyColumn>
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.PagesCount])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.PagesCount])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="int" Property="x => x.PagesCount" Title="@Localizer["Table_Pages_Count"]">
 									<CellTemplate>
@@ -135,7 +128,7 @@
 								</PropertyColumn>
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.IsArchive])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.IsArchive])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="bool" Property="x => x.IsArchive" Title="@Localizer["Table_Is_Archive"]">
 									<CellTemplate>
@@ -146,7 +139,7 @@
 								</PropertyColumn>
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.IsArchiveEntry])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.IsArchiveEntry])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="bool" Property="x => x.IsArchiveEntry" Title="@Localizer["Table_Is_Archive_Entry"]">
 									<CellTemplate>
@@ -157,22 +150,22 @@
 								</PropertyColumn>
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.FullPath])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.FullPath])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="string" Property="x => x.FullPath" Title="@Localizer["Table_Full_Path"]" />
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.MD5])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.MD5])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="string" Property="x => x.MD5" Title="@Localizer["Table_MD5"]" />
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.SHA256])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.SHA256])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="string" Property="x => x.SHA256" Title="@Localizer["Table_SHA256"]" />
 							}
 
-							@if (SettingsService.Settings.ColumnVisibleSettings[FileColumn.SHA512])
+							@if (SettingsService.FilesScanningSettings.ColumnVisibleSettings[FileColumn.SHA512])
 							{
 								<PropertyColumn T="ScannedFile" TProperty="string" Property="x => x.SHA512" Title="@Localizer["Table_SHA512"]" />
 							}
@@ -182,28 +175,50 @@
 						</PagerContent>
 					</MudDataGrid>
 
-					<MudMenu DropShadow="true" PositionAtCursor="true" @ref="_contextMenu">
+					<MudMenu Dense="true" DropShadow="true" PositionAtCursor="true" @ref="_contextMenu" Class="custom-context-menu">
+						<!-- Группа 1: Открытие -->
 						<MudMenuItem OnClick="@(() => OpenFile(_contextRow?.FullPath))" Icon="@Icons.Material.Outlined.FileOpen">
-							@Localizer["Menu_Open_File"]
+							<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+								<MudText Typo="Typo.body2">@Localizer["Menu_Open_File"]</MudText>
+								<MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + O</MudChip>
+							</MudStack>
 						</MudMenuItem>
+
 						<MudMenuItem OnClick="@(() => OpenFileDirectory(_contextRow?.FullPath))" Icon="@Icons.Material.Outlined.FolderOpen">
-							@Localizer["Menu_Open_Folder"]
+							<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+								<MudText Typo="Typo.body2">@Localizer["Menu_Open_Folder"]</MudText>
+								<MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + Shift + O</MudChip>
+							</MudStack>
 						</MudMenuItem>
+
+						<MudDivider Class="my-1" />
+
+						<!-- Группа 2: Копирование (Одиночное) -->
 						<MudMenuItem OnClick="@CopySingleInfoAsync" Icon="@Icons.Material.Outlined.FileCopy">
-							@Localizer["Menu_Copy_Info"]
+							<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+								<MudText Typo="Typo.body2">@Localizer["Menu_Copy_Info"]</MudText>
+								<MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + S</MudChip>
+							</MudStack>
 						</MudMenuItem>
+
 						<MudMenuItem OnClick="@CopySingleInfoTsvAsync" Icon="@Icons.Material.TwoTone.FileCopy">
-							@Localizer["Menu_Copy_Info_TSV"]
+							<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+								<MudText Typo="Typo.body2">@Localizer["Menu_Copy_Info_TSV"]</MudText>
+								<MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + Shift + S</MudChip>
+							</MudStack>
 						</MudMenuItem>
 
 						@if (_selectedRows?.Count > 1)
 						{
-							<MudDivider />
+							<MudDivider Class="my-1" />
+
+							<!-- Группа 3: Массовые операции -->
 							<MudMenuItem OnClick="@CopySelectedInfoAsync" Icon="@Icons.Material.Outlined.CopyAll">
-								@Localizer["Menu_Copy_Info_All"]
+								<MudText Typo="Typo.body2">@Localizer["Menu_Copy_Info_All"]</MudText>
 							</MudMenuItem>
+
 							<MudMenuItem OnClick="@CopySelectedInfoTsvAsync" Icon="@Icons.Material.TwoTone.CopyAll">
-								@Localizer["Menu_Copy_Info_TSV_All"]
+								<MudText Typo="Typo.body2">@Localizer["Menu_Copy_Info_TSV_All"]</MudText>
 							</MudMenuItem>
 						}
 					</MudMenu>
@@ -222,6 +237,8 @@
 	private MudMenu _contextMenu = null!;
 	private List<ScannedFile> _scannedFiles = new();
 	private HashSet<ScannedFile>? _selectedRows = null;
+	private DateTime _lastUpdate = DateTime.MinValue;
+	private const int UpdateIntervalMs = 200;
 
 	// Кэш для делегатов форматирования
 	private Dictionary<FileColumn, Func<ScannedFile, int, string>>? _columnFormatters;
@@ -243,23 +260,44 @@
 		_cts = new CancellationTokenSource();
 
 		var progress = new Progress<double>(value =>
-		{
-			_progress = value;
-			StateHasChanged();
-		});
+        {
+            _progress = value;
+
+            var now = DateTime.UtcNow;
+            if ((now - _lastUpdate).TotalMilliseconds >= UpdateIntervalMs)
+            {
+                _lastUpdate = now;
+                InvokeAsync(StateHasChanged);
+            }
+        });
+
 
 		try
 		{
-			await ScannerService.ScanDirectoryAsync(
+			List<ScannedFile> tempList = new List<ScannedFile>(capacity: 250);
+
+			await foreach (var file in ScannerService.ScanDirectoryAsync(
 				_folderPath,
-				SettingsService.Settings,
+				SettingsService.FilesScanningSettings,
 				progress,
-				(file) =>
+				_cts.Token))
+			{
+				tempList.Add(file);
+
+				if (tempList.Count >= 250)
 				{
-					_scannedFiles.Add(file);
-					StateHasChanged();
-				},
-				_cts.Token);
+					_scannedFiles.AddRange(tempList);
+					tempList.Clear();
+
+					await InvokeAsync(StateHasChanged);
+				}
+			}
+
+			if (tempList.Count > 0)
+			{
+				_scannedFiles.AddRange(tempList);
+				await InvokeAsync(StateHasChanged);
+			}
 
 			Snackbar.Add(Localizer["Scanner_Completed_Success"], Severity.Success);
 		}
@@ -276,7 +314,7 @@
 			_isScanning = false;
 			_cts?.Dispose();
 			_cts = null;
-			StateHasChanged();
+			await InvokeAsync(StateHasChanged);
 		}
 	}
 
@@ -300,7 +338,7 @@
 	{
 		if (bytes == 0) return "0 B";
 
-		var type = SettingsService.Settings.DisplayedSizeType;
+		var type = SettingsService.FilesScanningSettings.DisplayedSizeType;
 		double size = bytes;
 
 		return type switch
@@ -376,7 +414,7 @@
 	private IEnumerable<KeyValuePair<FileColumn, Func<ScannedFile, int, string>>> GetVisibleFormatters()
 	{
 		InitializeColumnFormatters();
-		return _columnFormatters!.Where(kvp => SettingsService.Settings.ColumnVisibleSettings[kvp.Key]);
+		return _columnFormatters!.Where(kvp => SettingsService.FilesScanningSettings.ColumnVisibleSettings[kvp.Key]);
 	}
 
 	/// <summary>

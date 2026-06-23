@@ -9,96 +9,188 @@ namespace OmniCore.Modules.FMMS.Services
     {
         private readonly ILogger<FmmsSettingsService>? _logger;
         private readonly string _filePath;
+        private readonly SemaphoreSlim _saveLock = new(1, 1);
 
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
             WriteIndented = true,
             PropertyNameCaseInsensitive = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters = { new JsonStringEnumConverter() }
         };
+
+        public event Action? OnSettingsChanged;
 
         public FmmsSettingsService(ILogger<FmmsSettingsService>? logger = null)
         {
             _logger = logger;
-            string appDataDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            _filePath = Path.Combine(appDataDirectory, "OmniCore", "fmms_settings.json");
 
-            Settings = new FilesScanningSettings();
+            // Cross-platform path for MAUI
+            string appDataDirectory = FileSystem.AppDataDirectory;
+            _filePath = Path.Combine(appDataDirectory, "fmms_settings.json");
+
+            // Initialize with default values
+            FilesScanningSettings = new FilesScanningSettings();
+            DirectoryScanningSettings = new DirectoryScanningSettings();
+
+            if (_logger?.IsEnabled(LogLevel.Debug) == true)
+            {
+                _logger.LogDebug("FMMS settings service initialized. File path: {FilePath}", _filePath);
+            }
         }
 
-        /// <summary>
-        /// Текущие активные настройки. UI должен работать именно с этим свойством.
-        /// </summary>
-        public FilesScanningSettings Settings { get; private set; }
+        public FilesScanningSettings FilesScanningSettings { get; private set; }
+        public DirectoryScanningSettings DirectoryScanningSettings { get; private set; }
 
-        /// <summary>
-        /// Загружает настройки из файла. Должен быть вызван один раз при старте приложения.
-        /// </summary>
-        public async Task LoadAsync()
+        public async Task LoadAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                if (File.Exists(_filePath))
+                if (!File.Exists(_filePath))
                 {
-                    string json = await File.ReadAllTextAsync(_filePath);
-                    FilesScanningSettings? loadedSettings = JsonSerializer.Deserialize<FilesScanningSettings>(json, _jsonOptions);
-
-                    if (loadedSettings != null)
+                    if (_logger?.IsEnabled(LogLevel.Information) == true)
                     {
-                        // Просто присваиваем загруженные настройки свойству
-                        Settings = loadedSettings;
-                        if (_logger?.IsEnabled(LogLevel.Information) == true)
-                        {
-                            _logger?.LogInformation("FMMS settings loaded successfully from {Path}", _filePath);
-                        }
-
-                        return;
+                        _logger.LogInformation("FMMS settings file not found at {FilePath}. Using defaults.", _filePath);
                     }
+                    return;
                 }
 
-                _logger?.LogInformation("FMMS settings file not found. Using defaults.");
+                string json = await File.ReadAllTextAsync(_filePath, cancellationToken).ConfigureAwait(false);
+                ApplySettings(JsonSerializer.Deserialize<SavedSettingsContainer>(json, _jsonOptions));
+            }
+            catch (JsonException jsonEx)
+            {
+                if (_logger?.IsEnabled(LogLevel.Error) == true)
+                {
+                    _logger.LogError(jsonEx, "FMMS settings deserialization error. File is corrupted.");
+                }
+                HandleCorruptedFile();
+            }
+            catch (OperationCanceledException ex)
+            {
+                if (_logger?.IsEnabled(LogLevel.Warning) == true)
+                {
+                    _logger.LogWarning(ex, "FMMS settings loading was canceled.");
+                }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error loading FMMS settings. Default settings will be used.");
+                if (_logger?.IsEnabled(LogLevel.Error) == true)
+                {
+                    _logger.LogError(ex, "Unexpected error loading FMMS settings. Default settings will be used.");
+                }
+                ResetToDefaultValues();
             }
         }
 
-        /// <summary>
-        /// Сохраняет ТЕКУЩИЕ настройки (Settings) в файл.
-        /// </summary>
-        public async Task SaveAsync()
+        private void ApplySettings(SavedSettingsContainer? savedSettings)
         {
+            if (savedSettings != null)
+            {
+                if (savedSettings.FilesScanningSettings != null)
+                    FilesScanningSettings = savedSettings.FilesScanningSettings;
+
+                if (savedSettings.DirectoryScanningSettings != null)
+                    DirectoryScanningSettings = savedSettings.DirectoryScanningSettings;
+
+                if (_logger?.IsEnabled(LogLevel.Information) == true)
+                {
+                    _logger.LogInformation("FMMS settings loaded successfully from {FilePath}.", _filePath);
+                }
+            }
+        }
+
+        public async Task SaveAsync(CancellationToken cancellationToken = default)
+        {
+            await _saveLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                // Убеждаемся, что директория существует
                 string? directory = Path.GetDirectoryName(_filePath);
                 if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
                     Directory.CreateDirectory(directory);
                 }
 
-                string json = JsonSerializer.Serialize(Settings, _jsonOptions);
-                await File.WriteAllTextAsync(_filePath, json);
+                var container = new SavedSettingsContainer
+                {
+                    FilesScanningSettings = FilesScanningSettings,
+                    DirectoryScanningSettings = DirectoryScanningSettings
+                };
+
+                string json = JsonSerializer.Serialize(container, _jsonOptions);
+                await File.WriteAllTextAsync(_filePath, json, cancellationToken).ConfigureAwait(false);
+
                 if (_logger?.IsEnabled(LogLevel.Information) == true)
                 {
-                    _logger?.LogInformation("FMMS settings saved successfully to {Path}", _filePath);
+                    _logger.LogInformation("FMMS settings saved successfully to {FilePath}.", _filePath);
+                }
+
+                OnSettingsChanged?.Invoke();
+            }
+            catch (OperationCanceledException ex)
+            {
+                if (_logger?.IsEnabled(LogLevel.Warning) == true)
+                {
+                    _logger.LogWarning(ex, "FMMS settings saving was canceled.");
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error saving FMMS settings");
-                throw new InvalidOperationException(ex.Message, ex);
+                if (_logger?.IsEnabled(LogLevel.Error) == true)
+                {
+                    _logger.LogError(ex, "Critical error saving FMMS settings.");
+                }
+            }
+            finally
+            {
+                _saveLock.Release();
             }
         }
 
-        /// <summary>
-        /// Сбрасывает настройки к дефолтным и сохраняет их.
-        /// </summary>
-        public async Task ResetToDefaultsAsync()
+        public async Task ResetToDefaultsAsync(CancellationToken cancellationToken = default)
         {
-            Settings = new FilesScanningSettings();
-            await SaveAsync();
+            ResetToDefaultValues();
+            await SaveAsync(cancellationToken).ConfigureAwait(false);
+
+            if (_logger?.IsEnabled(LogLevel.Information) == true)
+            {
+                _logger.LogInformation("FMMS settings reset to defaults.");
+            }
+        }
+
+        private void ResetToDefaultValues()
+        {
+            FilesScanningSettings = new FilesScanningSettings();
+            DirectoryScanningSettings = new DirectoryScanningSettings();
+        }
+
+        private void HandleCorruptedFile()
+        {
+            try
+            {
+                string backupPath = $"{_filePath}.bak_{DateTime.Now:yyyyMMdd_HHmmss}";
+                File.Move(_filePath, backupPath);
+
+                if (_logger?.IsEnabled(LogLevel.Warning) == true)
+                {
+                    _logger.LogWarning("Corrupted FMMS settings file renamed to {BackupPath}. Default settings created.", backupPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_logger?.IsEnabled(LogLevel.Error) == true)
+                {
+                    _logger.LogError(ex, "Failed to create backup of corrupted FMMS settings file.");
+                }
+            }
+
+            ResetToDefaultValues();
+        }
+
+        internal sealed class SavedSettingsContainer
+        {
+            public FilesScanningSettings? FilesScanningSettings { get; set; }
+            public DirectoryScanningSettings? DirectoryScanningSettings { get; set; }
         }
     }
 }

@@ -11,9 +11,11 @@ namespace OmniCore.Core.Interfaces
         string Icon { get; }
         string BaseRoute { get; }
         OSPlatforms SupportedOS { get; }
+        bool Initialized { get; }
 
         IReadOnlyList<INavigationItem> GetNavigationItems();
 
         void AddModuleServices(IServiceCollection services);
+        void Initialize(IServiceProvider serviceProvider);
     }
 }

@@ -5,16 +5,17 @@
 @using System.Diagnostics
 @using OmniCore.Hybrid.Resources
 @inject IAppSettingsService AppSettings
-@inject IEnumerable<IModule> Modules
-@inject IEnumerable<IModuleSettingsProvider> ModuleSettingsProviders
+@inject IModuleManager ModuleManager
 @inject IStringLocalizer<SharedResources> Localizer
 @inject ISnackbar Snackbar
+@inject ILayoutStateService LayoutStateService
 @inject NavigationManager NavManager
+@implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
 	<MudText Typo="Typo.h4" Class="mb-4" Style="font-weight: 600;">@Localizer["Settings_Title"]</MudText>
 
-	<MudTabs Elevation="1" Border="true" Rounded="true" ApplyEffectsToContainer="true">
+	<MudTabs Elevation="1" Border="true" Rounded="true" ApplyEffectsToContainer="false">
 
 		<!-- Вкладка 1: Общие настройки приложения -->
 		<MudTabPanel Text="@Localizer["Settings_Tab_General"]" Icon="@Icons.Material.Filled.Settings">
@@ -30,172 +31,215 @@
 					</MudCardHeader>
 					<MudCardContent>
 						<MudStack Spacing="2">
-							@foreach (var module in Modules.OrderBy(m => m.Title))
+							@foreach (var module in _registeredModules.OrderBy(m => m.Title))
 							{
-								var moduleRoute = module.BaseRoute;
-								var isModuleEnabled = AppSettings.IsRouteEnabled(moduleRoute);
-								var modulePages = module.GetNavigationItems();
+								try
+								{
+									var moduleRoute = module.BaseRoute;
+									var isModuleEnabled = ModuleManager.IsEnabled(module);
+									var modulePages = module.GetNavigationItems();
 
-								<MudPaper Square="true" Outlined="true">
-									<MudExpansionPanel>
-										<TitleContent>
-											<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between flex-wrap gap-3">
-												<MudStack Row="true" AlignItems="AlignItems.Start" Class="flex-wrap gap-3">
-													<MudIcon Icon="@module.Icon" Color="Color.Primary" />
-													<div>
-														<MudText Typo="Typo.body1">@module.Title</MudText>
-														<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@module.Description</MudText>
-														<MudText Typo="Typo.caption" Class="mt-1">@module.BaseRoute</MudText>
-													</div>
+									<MudPaper Square="true" Outlined="true">
+										<MudExpansionPanel>
+											<TitleContent>
+												<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between flex-wrap gap-3">
+													<MudStack Row="true" AlignItems="AlignItems.Start" Class="flex-wrap gap-3">
+														<MudIcon Icon="@module.Icon" Color="Color.Primary" />
+														<div>
+															<MudText Typo="Typo.body1">@module.Title</MudText>
+															<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@module.Description</MudText>
+															<MudText Typo="Typo.caption" Class="mt-1">@module.BaseRoute</MudText>
+														</div>
+													</MudStack>
+													<MudSwitch T="bool"
+															   ValueChanged="@(async (val) => await ToggleModuleAsync(module, val))"
+															   Value="@isModuleEnabled"
+															   Label="@Localizer["Settings_EnableModule"]"
+															   Color="Color.Primary" />
 												</MudStack>
-												<MudSwitch T="bool" ValueChanged="@(async (val) => await ToggleRouteAsync(moduleRoute, val))" Value="@isModuleEnabled" Label="Включён" Color="Color.Primary" />
-											</MudStack>
-										</TitleContent>
-										<ChildContent>
-											<MudStack Spacing="2">
-												@if (!isModuleEnabled)
-												{
-													<MudText Typo="Typo.body2" Color="Color.Warning">Страницы доступны для настройки, но скрыты для пользователей, пока модуль отключён.</MudText>
-												}
-
-												@if (modulePages.Count == 0)
-												{
-													<MudPaper Outlined="true" Class="pa-4">
-														<MudText Typo="Typo.body2" Color="Color.Secondary">У этого модуля нет вложенных страниц для управления.</MudText>
-													</MudPaper>
-												}
-												else
-												{
-													@foreach (var modulePage in modulePages)
+											</TitleContent>
+											<ChildContent>
+												<MudStack Spacing="2">
+													@if (!isModuleEnabled)
 													{
-														var fullRoute = $"{module.BaseRoute.TrimEnd('/')}/{modulePage.RelativeRoute.TrimStart('/')}";
-														var isPageEnabled = AppSettings.IsRouteEnabled(fullRoute);
+														<MudText Typo="Typo.body2" Color="Color.Warning">@Localizer["Settings_ModuleDisabledDescription"]</MudText>
+													}
 
-														<MudPaper Outlined="true" Class="pa-3">
-															<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between flex-wrap gap-3">
-																<MudStack Row="true" AlignItems="AlignItems.Center" Class="flex-wrap gap-3">
-																	<MudIcon Icon="@modulePage.Icon" Color="Color.Secondary" />
-																	<div>
-																		<MudText Typo="Typo.body1">@modulePage.Title</MudText>
-
-																		<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@modulePage.Description</MudText>
-
-																		<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@fullRoute</MudText>
-																	</div>
-																</MudStack>
-																<MudSwitch T="bool" Value="@isPageEnabled" ValueChanged="@(async (val) => await ToggleRouteAsync(fullRoute, val))" Color="Color.Secondary" />
-															</MudStack>
+													@if (modulePages == null || modulePages.Count == 0)
+													{
+														<MudPaper Outlined="true" Class="pa-4">
+															<MudText Typo="Typo.body2" Color="Color.Secondary">@Localizer["Settings_ModuleDisabled"]</MudText>
 														</MudPaper>
 													}
-												}
-											</MudStack>
-										</ChildContent>
-									</MudExpansionPanel>
-								</MudPaper>
+													else
+													{
+														@foreach (var modulePage in modulePages)
+														{
+															try
+															{
+																var fullRoute = GetFullRoute(module, modulePage);
+																var isPageEnabled = AppSettings.IsRouteEnabled(fullRoute);
 
-								<MudPaper>
-									<MudStack Row="false">
-										<MudStack Row="true">
-											<MudIcon Icon="@module.Icon" />
-											<MudText>@module.Title</MudText>
-											<MudSpacer />
-										</MudStack>
-										<MudText>@module.Description</MudText>
-									</MudStack>
-									<MudExpansionPanels>
-
-									</MudExpansionPanels>
-								</MudPaper>
-
-								<MudExpansionPanel Text="@module.Title" Expanded="false" Class="mb-2">
-									<MudStack Spacing="2" Class="pa-2">
-
-										<!-- Переключатель всего модуля -->
-										<MudSwitch T="bool"
-												   Value="@isModuleEnabled"
-												   ValueChanged="@(async (val) => await ToggleRouteAsync(moduleRoute, val))"
-												   Label="@Localizer["Settings_EnableModule"]"
-												   Color="Color.Primary" />
-
-										<MudDivider Class="my-1" />
-
-										<!-- Переключатели отдельных страниц (только если модуль включен) -->
-										@if (isModuleEnabled)
-										{
-											var items = module.GetNavigationItems();
-											@foreach (var item in items)
-											{
-												var fullRoute = $"{module.BaseRoute.TrimEnd('/')}/{item.RelativeRoute.TrimStart('/')}";
-												var isPageEnabled = AppSettings.IsRouteEnabled(fullRoute);
-
-												<MudSwitch T="bool"
-														   Value="@isPageEnabled"
-														   ValueChanged="@(async (val) => await ToggleRouteAsync(fullRoute, val))"
-														   Label="@item.Title"
-														   Color="Color.Secondary"
-														   Class="ml-6" />
-											}
-										}
-									</MudStack>
-								</MudExpansionPanel>
+																<MudPaper Outlined="true" Class="pa-3">
+																	<MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between flex-wrap gap-3">
+																		<MudStack Row="true" AlignItems="AlignItems.Center" Class="flex-wrap gap-3">
+																			<MudIcon Icon="@modulePage.Icon" Color="Color.Secondary" />
+																			<div>
+																				<MudText Typo="Typo.body1">@modulePage.Title</MudText>
+																				<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@modulePage.Description</MudText>
+																				<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@fullRoute</MudText>
+																			</div>
+																		</MudStack>
+																		<MudSwitch T="bool"
+																				   Value="@isPageEnabled"
+																				   ValueChanged="@(async (val) => await TogglePageAsync(fullRoute, val))"
+																				   Color="Color.Secondary" />
+																	</MudStack>
+																</MudPaper>
+															}
+															catch (Exception ex)
+															{
+																System.Diagnostics.Debug.WriteLine($"[Settings] Error rendering page: {ex.Message}");
+															}
+														}
+													}
+												</MudStack>
+											</ChildContent>
+										</MudExpansionPanel>
+									</MudPaper>
+								}
+								catch (Exception ex)
+								{
+									System.Diagnostics.Debug.WriteLine($"[Settings] Error rendering module: {ex.Message}");
+								}
 							}
 						</MudStack>
 					</MudCardContent>
 				</MudCard>
-
-				<!-- Кнопка сохранения (на случай пакетного изменения, хотя мы сохраняем сразу) -->
-				<MudStack Row="true" Justify="Justify.FlexEnd">
-					<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAllAsync" StartIcon="@Icons.Material.Filled.Save">
-						@Localizer["Common_Save"]
-					</MudButton>
-				</MudStack>
-
 			</MudStack>
 		</MudTabPanel>
 
 		<!-- Вкладки 2+: Настройки конкретных модулей (Динамическая генерация) -->
-		@foreach (var provider in ModuleSettingsProviders)
+		@foreach (var provider in _settingsProviders)
 		{
-			<MudTabPanel Text="@provider.ModuleName" Icon="@provider.Icon">
-				<!-- Магия Blazor: рендерит компонент, тип которого указан в провайдере модуля -->
-				<DynamicComponent Type="@provider.SettingsComponentType" />
-			</MudTabPanel>
+			try
+			{
+				<MudTabPanel Text="@provider.ModuleName" Icon="@provider.Icon">
+					<DynamicComponent Type="@provider.SettingsComponentType" />
+				</MudTabPanel>
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine($"[Settings] Error rendering settings provider: {ex.Message}");
+			}
 		}
 
 	</MudTabs>
 </MudContainer>
 
 @code {
+	private IReadOnlyCollection<IModule> _registeredModules = [];
+	private IReadOnlyList<IModuleSettingsProvider> _settingsProviders = [];
+
 	protected override void OnInitialized()
 	{
-		foreach (var pr in ModuleSettingsProviders)
+		// Подписываемся на события для реактивного обновления
+		ModuleManager.ModuleStateChanged += OnModuleStateChanged;
+		ModuleManager.ModulesBulkRegistered += OnModulesBulkRegistered;
+
+		// Загружаем данные модулей
+		LoadModuleData();
+	}
+
+	private void LoadModuleData()
+	{
+		_registeredModules = ModuleManager.GetRegisteredModules();
+
+		_settingsProviders = _registeredModules
+					.Where(m => m is IModuleSettingsProvider)
+					.Select(m => (IModuleSettingsProvider)m)
+					.ToList()
+					.AsReadOnly();
+
+		foreach (var provider in _settingsProviders)
 		{
-			Debug.WriteLine(pr.ModuleName);
+			Debug.WriteLine($"[Settings] Loaded provider: {provider.ModuleName}");
 		}
-		base.OnInitialized();
+	}
+
+	private void OnModuleStateChanged(IModule module)
+	{
+		InvokeAsync(StateHasChanged);
+	}
+
+	private void OnModulesBulkRegistered(IReadOnlyCollection<IModule> modules)
+	{
+		LoadModuleData();
+		InvokeAsync(StateHasChanged);
 	}
 
 	/// <summary>
-	/// Переключает видимость маршрута и сразу сохраняет настройки
+	/// Переключает состояние модуля через ModuleManager
 	/// </summary>
-	private async Task ToggleRouteAsync(string route, bool isEnabled)
+	private async Task ToggleModuleAsync(IModule module, bool isEnabled)
 	{
-		if (isEnabled)
+		try
 		{
-			AppSettings.Settings.DisabledRoutes.Remove(route);
-		}
-		else
-		{
-			AppSettings.Settings.DisabledRoutes.Add(route);
-		}
+			if (isEnabled)
+			{
+				ModuleManager.EnableModule(module);
+			}
+			else
+			{
+				ModuleManager.DisableModule(module);
+			}
 
-		await AppSettings.SaveAsync();
-		Snackbar.Add(Localizer["Settings_Saved_Success"], Severity.Success);
+			await AppSettings.SaveAsync();
+			LayoutStateService.NotifyStateChanged();
+			Snackbar.Add(Localizer["Settings_Saved_Success"], Severity.Success);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[Settings] Error toggling module: {ex.Message}");
+			Snackbar.Add(Localizer["Settings_Error_Saving"], Severity.Error);
+		}
 	}
 
-	private async Task SaveAllAsync()
+	/// <summary>
+	/// Переключает видимость страницы модуля
+	/// </summary>
+	private async Task TogglePageAsync(string route, bool isEnabled)
 	{
-		await AppSettings.SaveAsync();
-		Snackbar.Add(Localizer["Settings_Saved_Success"], Severity.Success);
+		try
+		{
+			if (isEnabled)
+			{
+				AppSettings.Settings.DisabledRoutes.Remove(route);
+			}
+			else
+			{
+				AppSettings.Settings.DisabledRoutes.Add(route);
+			}
+
+			await AppSettings.SaveAsync();
+			LayoutStateService.NotifyStateChanged();
+			Snackbar.Add(Localizer["Settings_Saved_Success"], Severity.Success);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[Settings] Error toggling page: {ex.Message}");
+			Snackbar.Add(Localizer["Settings_Error_Saving"], Severity.Error);
+		}
+	}
+
+	private string GetFullRoute(IModule module, INavigationItem item)
+	{
+		return $"{module.BaseRoute.TrimEnd('/')}/{item.RelativeRoute.TrimStart('/')}";
+	}
+
+	public void Dispose()
+	{
+		ModuleManager.ModuleStateChanged -= OnModuleStateChanged;
+		ModuleManager.ModulesBulkRegistered -= OnModulesBulkRegistered;
 	}
 }
