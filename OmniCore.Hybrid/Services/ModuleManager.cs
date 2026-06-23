@@ -22,6 +22,9 @@ namespace OmniCore.Hybrid.Services
     /// </remarks>
     internal sealed partial class ModuleManager(IAppSettingsService appSettingsService, ILogger<ModuleManager>? logger = null) : IModuleManager
     {
+
+        private readonly OSPlatforms _currentOS = OSDetector.DetectCurrentOS();
+
         /// <summary>
         /// Событие, возникающее при регистрации нового модуля в менеджере.
         /// </summary>
@@ -127,7 +130,7 @@ namespace OmniCore.Hybrid.Services
                 }
 
                 // Проверяем, должен ли модуль быть активирован
-                if (IsEnabled(module) && IsSupported(module, OSDetector.DetectCurrentOS()))
+                if (IsEnabled(module) && IsSupported(module, _currentOS))
                 {
                     _activatedModules.Add(module);
                 }
@@ -298,7 +301,7 @@ namespace OmniCore.Hybrid.Services
         /// требуется перезапуск приложения.
         /// </para>
         /// </remarks>
-        /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="module"/> равен <c>null</c>.</exception>
+        /// <exception cref="ArgumentNullException">Выбрасывается, если <paramr efname="module"/> равен <c>null</c>.</exception>
         public void DisableModule(IModule module)
         {
             ArgumentNullException.ThrowIfNull(module);
@@ -371,6 +374,20 @@ namespace OmniCore.Hybrid.Services
             lock (_lock)
             {
                 return _activatedModules.AsReadOnly();
+            }
+        }
+
+        public IModule? GetModuleByRoute(string baseRoute)
+        {
+            if (string.IsNullOrWhiteSpace(baseRoute))
+            {
+                return null;
+            }
+
+            lock (_lock)
+            {
+                return _registeredModules.FirstOrDefault(m =>
+                    m.BaseRoute.Equals(baseRoute, StringComparison.OrdinalIgnoreCase));
             }
         }
 

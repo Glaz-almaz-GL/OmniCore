@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace OmniCore.Hybrid.Services
 {
-    public class AppSettingsService : IAppSettingsService
+    public sealed partial class AppSettingsService : IAppSettingsService, IDisposable
     {
         private readonly string _filePath;
         private readonly ILogger<AppSettingsService>? _logger;
@@ -18,23 +18,23 @@ namespace OmniCore.Hybrid.Services
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        private bool _disposed;
+
         public event Action<AppSettings>? OnSettingsChanged;
         public AppSettings Settings { get; private set; } = new();
 
         public AppSettingsService(ILogger<AppSettingsService>? logger = null)
         {
             _logger = logger;
-
-            // Use cross-platform MAUI path
             string appDataDirectory = FileSystem.AppDataDirectory;
             _filePath = Path.Combine(appDataDirectory, "app_settings.json");
 
             if (_logger?.IsEnabled(LogLevel.Information) == true)
             {
-                _logger?.LogInformation("Settings service initialized. File path: {FilePath}", _filePath);
+                _logger.LogInformation("Settings service initialized. File path: {FilePath}", _filePath);
             }
 
-            LoadAsync().Wait();
+            _ = LoadAsync().ConfigureAwait(false);
         }
 
         public async Task LoadAsync(CancellationToken cancellationToken = default)
@@ -56,6 +56,7 @@ namespace OmniCore.Hybrid.Services
                 if (loaded != null)
                 {
                     Settings = loaded;
+                    ValidateSettings();
                     ApplyCultureInfo();
 
                     if (_logger?.IsEnabled(LogLevel.Information) == true)
@@ -191,6 +192,58 @@ namespace OmniCore.Hybrid.Services
             }
 
             Settings = new AppSettings();
+        }
+
+        private void ValidateSettings()
+        {
+            if (string.IsNullOrWhiteSpace(Settings.Language))
+            {
+                Settings.Language = CultureInfo.CurrentCulture.Name;
+                _logger?.LogWarning("Invalid language setting. Using current culture: {Language}", Settings.Language);
+            }
+
+            try
+            {
+                _ = new CultureInfo(Settings.Language);
+            }
+            catch (CultureNotFoundException ex)
+            {
+                _logger?.LogWarning(ex, "Unknown culture {Language}. Using default.", Settings.Language);
+                Settings.Language = "en-US";
+            }
+
+            if (Settings.DisabledRoutes == null)
+            {
+                Settings.DisabledRoutes = [];
+            }
+        }
+
+        public async Task ResetToDefaultsAsync(CancellationToken cancellationToken = default)
+        {
+            Settings = new AppSettings();
+            await SaveAsync(cancellationToken).ConfigureAwait(false);
+
+            if (_logger?.IsEnabled(LogLevel.Information) == true)
+            {
+                _logger.LogInformation("Settings reset to defaults.");
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+            if (disposing)
+            {
+                _saveLock.Dispose();
+            }
+
+            _disposed = true;
         }
     }
 }

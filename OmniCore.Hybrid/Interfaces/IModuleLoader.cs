@@ -36,7 +36,6 @@ namespace OmniCore.Hybrid.Interfaces
         /// <item><description>Загружает сборки из указанного источника</description></item>
         /// <item><description>Находит типы, реализующие <see cref="IModule"/></description></item>
         /// <item><description>Создает экземпляры модулей через DI-контейнер</description></item>
-        /// <item><description>Инициализирует модули вызовом <see cref="IModule.Initialize"/></description></item>
         /// <item><description>Фильтрует модули по поддержке ОС</description></item>
         /// </list>
         /// </para>

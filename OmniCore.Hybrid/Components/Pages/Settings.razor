@@ -12,13 +12,13 @@
 @inject NavigationManager NavManager
 @implements IDisposable
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+<MudContainer  MaxWidth="MaxWidth.Medium" Class="mt-4">
 	<MudText Typo="Typo.h4" Class="mb-4" Style="font-weight: 600;">@Localizer["Settings_Title"]</MudText>
 
 	<MudTabs Elevation="1" Border="true" Rounded="true" ApplyEffectsToContainer="false">
 
 		<!-- Вкладка 1: Общие настройки приложения -->
-		<MudTabPanel Text="@Localizer["Settings_Tab_General"]" Icon="@Icons.Material.Filled.Settings">
+		<MudTabPanel  Text="@Localizer["Settings_Tab_General"]" Icon="@Icons.Material.Filled.Settings">
 			<MudStack Spacing="4">
 
 				<!-- Секция: Видимость модулей и страниц -->

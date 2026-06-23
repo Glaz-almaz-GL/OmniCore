@@ -7,19 +7,18 @@ namespace OmniCore.Hybrid.Extensions
     {
         public static readonly OSPlatform Android = OSPlatform.Create("ANDROID");
         public static readonly OSPlatform iOS = OSPlatform.Create("IOS");
+        public static readonly OSPlatform Unknown = OSPlatform.Create("UNKNOWN");
 
         public static OSPlatforms ToFlags(this OSPlatform oSPlatform)
         {
-            return oSPlatform.ToString() switch
-            {
-                "WINDOWS" => OSPlatforms.Windows,
-                "LINUX" => OSPlatforms.Linux,
-                "FREEBSD" => OSPlatforms.FreeBSD,
-                "OSX" => OSPlatforms.OSX,
-                "ANDROID" => OSPlatforms.Android,
-                "IOS" => OSPlatforms.iOS,
-                _ => OSPlatforms.Unknown
-            };
+            if (oSPlatform == OSPlatform.Windows) return OSPlatforms.Windows;
+            if (oSPlatform == OSPlatform.Linux) return OSPlatforms.Linux;
+            if (oSPlatform == OSPlatform.FreeBSD) return OSPlatforms.FreeBSD;
+            if (oSPlatform == OSPlatform.OSX) return OSPlatforms.OSX;
+            if (oSPlatform == Android) return OSPlatforms.Android;
+            if (oSPlatform == iOS) return OSPlatforms.iOS;
+
+            return OSPlatforms.Unknown;
         }
 
         public static OSPlatforms ToFlags(this OSPlatform? oSPlatform)
@@ -64,6 +63,11 @@ namespace OmniCore.Hybrid.Extensions
             if (oSPlatforms.HasFlag(OSPlatforms.iOS))
             {
                 result.Add(iOS);
+            }
+
+            if (result.Count == 0)
+            {
+                result.Add(Unknown);
             }
 
             return [.. result];

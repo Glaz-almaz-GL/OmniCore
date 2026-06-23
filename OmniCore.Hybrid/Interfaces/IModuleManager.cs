@@ -20,6 +20,11 @@ namespace OmniCore.Hybrid.Interfaces
         /// </summary>
         IReadOnlyCollection<IModule> GetActiveModules();
 
+        /// <summary>
+        /// Возвращает модуль по его базовому маршруту.
+        /// </summary>
+        IModule? GetModuleByRoute(string baseRoute);
+
         bool IsEnabled(IModule module);
 
         bool IsSupported(IModule module, OSPlatforms os);

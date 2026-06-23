@@ -15,5 +15,11 @@ namespace OmniCore.Hybrid.Interfaces
         Task SaveAsync(CancellationToken cancellationToken = default);
         bool IsRouteEnabled(string route);
         void ToggleRoute(string route);
+
+        /// <summary>
+        /// Сбрасывает настройки к значениям по умолчанию.
+        /// </summary>
+        Task ResetToDefaultsAsync(CancellationToken cancellationToken = default);
+
     }
 }

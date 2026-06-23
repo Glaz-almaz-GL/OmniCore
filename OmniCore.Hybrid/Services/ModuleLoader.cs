@@ -178,14 +178,22 @@ namespace OmniCore.Hybrid.Services
 
             module = null;
 
-            module = (IModule)ActivatorUtilities.CreateInstance(serviceProvider, moduleType);
-
-            if (_logger?.IsEnabled(LogLevel.Debug) == true)
+            try
             {
-                _logger.LogDebug("Instance created: {ModuleName}", moduleType.Name);
-            }
+                module = (IModule)ActivatorUtilities.CreateInstance(serviceProvider, moduleType);
 
-            return true;
+                if (_logger?.IsEnabled(LogLevel.Debug) == true)
+                {
+                    _logger.LogDebug("Instance created: {ModuleName}", moduleType.Name);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error creating instance of {ModuleName}", moduleType.Name);
+                return false;
+            }
         }
     }
 }
