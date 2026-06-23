@@ -12,6 +12,7 @@ namespace OmniCore.Core.Interfaces
         string BaseRoute { get; }
         OSPlatforms SupportedOS { get; }
         bool Initialized { get; }
+        bool HideInNavMenu { get; }
 
         IReadOnlyList<INavigationItem> GetNavigationItems();
 

@@ -79,6 +79,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\OmniCore.Core\OmniCore.Core.csproj" />
 		<ProjectReference Include="..\OmniCore.Modules.FMMS\OmniCore.Modules.FMMS.csproj" />
+		<ProjectReference Include="..\OmniCore.Modules.TextEditor\OmniCore.Modules.TextEditor.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

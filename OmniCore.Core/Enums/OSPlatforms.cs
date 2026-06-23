@@ -12,6 +12,8 @@ namespace OmniCore.Core.Enums
         FreeBSD = 1 << 3,
         Android = 1 << 4,
         iOS = 1 << 5,
-        Unknown = 1 << 6
+        Unknown = 1 << 6,
+
+        All = Windows | Linux | OSX | Android | iOS | FreeBSD | Unknown
     }
 }

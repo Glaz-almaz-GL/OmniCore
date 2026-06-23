@@ -4,4 +4,6 @@
     <Deploy Solution="Debug|*" />
   </Project>
   <Project Path="OmniCore.Modules.FMMS/OmniCore.Modules.FMMS.csproj" />
+  <Project Path="OmniCore.Modules.TextEditor.Abstractions/OmniCore.Modules.TextEditor.Abstractions.csproj" Id="39b98bd5-722a-4078-b909-80e7b9d1fd48" />
+  <Project Path="OmniCore.Modules.TextEditor/OmniCore.Modules.TextEditor.csproj" Id="1dedaf6a-bc0c-4c4e-96d8-61ee3d6d355d" />
 </Solution>

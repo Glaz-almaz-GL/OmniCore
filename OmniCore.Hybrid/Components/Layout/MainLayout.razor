@@ -64,7 +64,7 @@
 	<!-- Боковое меню навигации -->
 	<MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
 		<MudNavMenu>
-			@foreach (var module in _activeModules.OrderBy(m => m.Title))
+			@foreach (var module in _activeModules.Where(m => !m.HideInNavMenu).OrderBy(m => m.Title))
 			{
 				try
 				{

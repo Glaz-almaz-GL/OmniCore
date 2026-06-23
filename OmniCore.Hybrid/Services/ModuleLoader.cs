@@ -69,7 +69,7 @@ namespace OmniCore.Hybrid.Services
         {
             ArgumentNullException.ThrowIfNull(module);
 
-            bool supported = (module.SupportedOS & os) != OSPlatforms.None;
+            bool supported = ((module.SupportedOS & os) != OSPlatforms.None) || os == OSPlatforms.All;
 
             if (!supported && _logger?.IsEnabled(LogLevel.Debug) == true)
             {

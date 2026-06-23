@@ -29,26 +29,29 @@ namespace OmniCore.Hybrid
                 ModuleLoader moduleLoader = new(tempProvider.GetService<ILogger<ModuleLoader>>());
 
                 // Загружаем модули
-                string modulesDirectory = Path.Combine(AppContext.BaseDirectory, "Modules");
+                //string modulesDirectory = Path.Combine(AppContext.BaseDirectory, "Modules");
+                string modulesDirectory = AppContext.BaseDirectory;
 
                 try
                 {
                     if (Directory.Exists(modulesDirectory))
                     {
-                        foreach (string moduleDir in Directory.GetDirectories(modulesDirectory, "*", SearchOption.TopDirectoryOnly))
-                        {
-                            IReadOnlyCollection<IModule> modules = moduleLoader.LoadModules(
-                            moduleDir,
-                            currentOS,
-                            tempProvider);
+                        //foreach (string moduleDir in Directory.GetDirectories(modulesDirectory, "*", SearchOption.TopDirectoryOnly))
+                        //{
+                        string moduleDir = AppContext.BaseDirectory;
 
-                            // Регистрируем модули и их сервисы
-                            foreach (IModule module in modules)
-                            {
-                                RegisterModule(builder.Services, module);
-                                resultModules.Add(module);
-                            }
+                        IReadOnlyCollection <IModule> modules = moduleLoader.LoadModules(
+                        moduleDir,
+                        currentOS,
+                        tempProvider);
+
+                        // Регистрируем модули и их сервисы
+                        foreach (IModule module in modules)
+                        {
+                            RegisterModule(builder.Services, module);
+                            resultModules.Add(module);
                         }
+                        //}
                     }
                 }
                 catch (Exception ex)
@@ -57,11 +60,6 @@ namespace OmniCore.Hybrid
                     logger?.LogCritical(ex, "Failed to load modules");
                 }
             }
-
-#if DEBUG
-            builder.Services.AddBlazorWebViewDeveloperTools();
-            builder.Logging.AddDebug();
-#endif
 
             MauiApp finalApp = builder.Build();
 
@@ -103,7 +101,12 @@ namespace OmniCore.Hybrid
 
             builder.Services.AddLogging();
 
-            builder.Logging.SetMinimumLevel(LogLevel.Information);
+#if DEBUG
+            builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Logging.AddDebug();
+#endif
+
+            builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<IAppSettingsService, AppSettingsService>();

@@ -27,6 +27,7 @@ namespace OmniCore.Modules.FMMS
         public string BaseRoute => ModuleConstants.BasePagePath;
         public OSPlatforms SupportedOS { get; init; } = OSPlatforms.Windows;
         public bool Initialized { get; private set; } = false;
+        public bool HideInNavMenu { get; } = false;
 
         public void AddModuleServices(IServiceCollection services)
         {
