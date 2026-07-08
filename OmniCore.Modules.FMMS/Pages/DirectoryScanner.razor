@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Localization
 @using MudBlazor
+@using OmniCore.Hybrid.Abstractions.Interfaces
 @using OmniCore.Modules.FMMS.Enums
 @using OmniCore.Modules.FMMS.Interfaces
 @using OmniCore.Modules.FMMS.Models
@@ -153,6 +154,11 @@
 	private List<ScannedDirectory> _scannedDirs = new();
 	private HashSet<ScannedDirectory>? _selectedRows = null;
 
+	private const double KbMultiplier = 1024.0;
+	private const double MbMultiplier = KbMultiplier * 1024.0;
+	private const double GbMultiplier = MbMultiplier * 1024.0;
+	private const double TbMultiplier = GbMultiplier * 1024.0;
+
 	// Кэш для делегатов форматирования
 	private Dictionary<string, Func<ScannedDirectory, int, string>>? _columnFormatters;
 
@@ -247,20 +253,19 @@
 		_selectedRows = items;
 	}
 
-	private string FormatSize(long bytes)
+	public string FormatSize(double size)
 	{
-		if (bytes == 0) return "0 B";
-
 		var type = SettingsService.DirectoryScanningSettings.DisplayedSizeType;
-		double size = bytes;
 
 		return type switch
 		{
-			FileSizeType.B => $"{size} B",
-			FileSizeType.KB => $"{(size / 1024.0):F2} KB",
-			FileSizeType.MB => $"{(size / 1024.0 / 1024.0):F2} MB",
-			FileSizeType.GB => $"{(size / 1024.0 / 1024.0 / 1024.0):F2} GB",
-			_ => $"{size} B"
+			FileSizeType.Bit => $"{size * 8.0:F0} bit",
+			FileSizeType.B => $"{size:F0} B",
+			FileSizeType.KB => $"{size / KbMultiplier:F2} KB",
+			FileSizeType.MB => $"{size / MbMultiplier:F2} MB",
+			FileSizeType.GB => $"{size / GbMultiplier:F2} GB",
+			FileSizeType.TB => $"{size / TbMultiplier:F2} TB",
+			_ => $"{size:F0} B"
 		};
 	}
 

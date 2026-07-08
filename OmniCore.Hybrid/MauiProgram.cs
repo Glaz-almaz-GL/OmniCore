@@ -40,7 +40,7 @@ namespace OmniCore.Hybrid
                         //{
                         string moduleDir = AppContext.BaseDirectory;
 
-                        IReadOnlyCollection <IModule> modules = moduleLoader.LoadModules(
+                        IReadOnlyCollection<IModule> modules = moduleLoader.LoadModules(
                         moduleDir,
                         currentOS,
                         tempProvider);
@@ -106,7 +106,7 @@ namespace OmniCore.Hybrid
             builder.Logging.AddDebug();
 #endif
 
-            builder.Logging.SetMinimumLevel(LogLevel.Debug);
+            builder.Logging.SetMinimumLevel(LogLevel.Information);
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<IAppSettingsService, AppSettingsService>();

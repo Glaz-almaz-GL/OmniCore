@@ -2,27 +2,26 @@
 
 namespace OmniCore.Modules.FMMS.Resources.Settings
 {
+    /// <summary>
+    /// Настройки сканирования файлов
+    /// </summary>
     public sealed class FilesScanningSettings
     {
-        public Dictionary<string, int> PagesCountCustomRules { get; set; } = [];
+        #region General
 
-        public Dictionary<FileColumn, bool> ColumnVisibleSettings { get; set; } = new()
-        {
-            { FileColumn.Id, true },
-            { FileColumn.Name, true },
-            { FileColumn.PagesCount, true },
-            { FileColumn.Extension, true },
-            { FileColumn.SHA256, true },
-            { FileColumn.SHA512, false },
-            { FileColumn.MD5, false },
-            { FileColumn.FullPath, false },
-            { FileColumn.IsArchive, false },
-            { FileColumn.IsArchiveEntry, false },
-            { FileColumn.CompressedSize, false },
-            { FileColumn.UnCompressedSize, false },
-            { FileColumn.Size, true }
-        };
+        /// <summary>
+        /// Единица измерения отображаемого размера файлов
+        /// </summary>
+        public FileSizeType DisplayedSizeType { get; set; } = FileSizeType.MB;
 
+        /// <summary>
+        /// Сканировать ли содержимое архивов
+        /// </summary>
+        public bool ScanArchives { get; set; } = true;
+
+        /// <summary>
+        /// Пользовательские расширения, считающиеся архивами
+        /// </summary>
         public HashSet<string> CustomArchiveExtensions { get; set; } = new(StringComparer.OrdinalIgnoreCase)
         {
             ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tb2", ".xz",
@@ -31,10 +30,44 @@ namespace OmniCore.Modules.FMMS.Resources.Settings
             ".xpi", ".epub", ".s7z"
         };
 
-        public FileSizeType DisplayedSizeType { get; set; } = FileSizeType.MB;
-        public bool ScanArchives { get; set; } = true;
-        public bool CalculateSHA256 { get; set; } = true;
-        public bool CalculateSHA512 { get; set; } = false;
-        public bool CalculateMD5 { get; set; } = false;
+        /// <summary>
+        /// Максимальное количество файлов, обрабатываемых параллельно.
+        /// </summary>
+        /// <remarks>
+        /// <para>Значение по умолчанию: 1 (последовательная обработка).</para>
+        /// <para>Увеличение значения может ускорить сканирование на SSD/NVMe,
+        /// но увеличивает нагрузку на диск и потребление памяти.</para>
+        /// <para>Значение &lt;= 0 означает "без ограничений" (не рекомендуется).</para>
+        /// </remarks>
+        public int MaxConcurrentFileProcessing { get; set; } = 1;
+
+        #endregion
+
+        #region Page Count
+
+        /// <summary>
+        /// Пользовательские правила подсчёта страниц для расширений
+        /// </summary>
+        public Dictionary<string, int> PagesCountCustomRules { get; set; } = [];
+
+        #endregion
+
+        #region Hashing
+
+        /// <summary>
+        /// Настройки вычисления хешей
+        /// </summary>
+        public HashingSettings Hashing { get; set; } = new();
+
+        #endregion
+
+        #region Display
+
+        /// <summary>
+        /// Настройки видимости колонок
+        /// </summary>
+        public ColumnVisibilitySettings Columns { get; set; } = new();
+
+        #endregion
     }
 }

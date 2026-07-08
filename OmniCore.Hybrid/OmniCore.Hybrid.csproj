@@ -74,12 +74,13 @@
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.71" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
 		<PackageReference Include="MudBlazor" Version="9.5.0" />
+		<PackageReference Include="System.Private.Uri" Version="4.3.2" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\OmniCore.Core\OmniCore.Core.csproj" />
 		<ProjectReference Include="..\OmniCore.Modules.FMMS\OmniCore.Modules.FMMS.csproj" />
-		<ProjectReference Include="..\OmniCore.Modules.TextEditor\OmniCore.Modules.TextEditor.csproj" />
+		<ProjectReference Include="..\OmniCore.Modules.HashCalculator\OmniCore.Modules.HashCalculator.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

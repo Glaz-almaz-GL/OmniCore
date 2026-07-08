@@ -4,11 +4,14 @@ using Microsoft.Extensions.Logging;
 using OmniCore.Core.Entities;
 using OmniCore.Core.Enums;
 using OmniCore.Core.Interfaces;
+using OmniCore.Hybrid.Abstractions.Services;
+using OmniCore.Hybrid.Abstractions.Interfaces;
 using OmniCore.Modules.FMMS.Constants;
 using OmniCore.Modules.FMMS.Interfaces;
 using OmniCore.Modules.FMMS.Pages;
 using OmniCore.Modules.FMMS.Resources.Languages;
 using OmniCore.Modules.FMMS.Services;
+using MudBlazor.Services;
 
 namespace OmniCore.Modules.FMMS
 {
@@ -16,59 +19,87 @@ namespace OmniCore.Modules.FMMS
         IStringLocalizer<FmmsResources> localizer,
         ILogger<FmmsModule>? logger = null) : IModule, IModuleSettingsProvider
     {
-        private readonly IStringLocalizer<FmmsResources> _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
-        private readonly ILogger<FmmsModule>? _logger = logger;
         private FmmsSettingsService? _settingsService;
 
         #region IModule
-        public string Title => _localizer["ModuleName"];
-        public string Description => _localizer["ModuleDescription"];
-        public string Icon => MudBlazor.Icons.Material.Filled.PermMedia;
-        public string BaseRoute => ModuleConstants.BasePagePath;
-        public OSPlatforms SupportedOS { get; init; } = OSPlatforms.Windows;
-        public bool Initialized { get; private set; } = false;
-        public bool HideInNavMenu { get; } = false;
+        /// <inheritdoc/>
+        public string Title => localizer["ModuleName"];
 
+        /// <inheritdoc/>
+        public string Description => localizer["ModuleDescription"];
+
+        /// <inheritdoc/>
+        public string Icon => MudBlazor.Icons.Material.Filled.PermMedia;
+
+        /// <inheritdoc/>
+        public string BaseRoute => ModuleConstants.BasePagePath;
+
+        /// <inheritdoc/>
+        public OSPlatforms SupportedOS => OSPlatforms.Windows;
+
+        /// <inheritdoc/>
+        public bool Initialized { get; private set; } = false;
+
+        /// <inheritdoc/>
+        public bool HideInNavMenu => false;
+
+
+        private bool _servicesRegistered = false;
+
+        /// <inheritdoc/>
         public void AddModuleServices(IServiceCollection services)
         {
+            services.AddMudServices();
             services.AddLocalization();
             services.AddSingleton<FmmsSettingsService>();
             services.AddSingleton<IFileScannerService, FileScannerService>();
             services.AddSingleton<IDirectoryScannerService, DirectoryScannerService>();
+            services.AddSingleton<IFilePageService, FilePageService>();
             services.AddScoped<IClipboardService, ClipboardService>();
 
-            if (_logger?.IsEnabled(LogLevel.Information) == true)
+            if (logger?.IsEnabled(LogLevel.Information) == true)
             {
-                _logger.LogInformation("FMMS module services registered successfully.");
+                logger.LogInformation("FMMS module services registered successfully.");
             }
+
+            _servicesRegistered = true;
         }
 
+        /// <inheritdoc/>
         public void Initialize(IServiceProvider serviceProvider)
         {
+            if (!_servicesRegistered)
+            {
+                throw new InvalidOperationException("FMMS services are not registered.");
+            }
+
             _settingsService = serviceProvider.GetRequiredService<FmmsSettingsService>();
             Initialized = true;
 
-            if (_logger?.IsEnabled(LogLevel.Debug) == true)
+            if (logger?.IsEnabled(LogLevel.Debug) == true)
             {
-                _logger.LogDebug("FMMS module initialized with settings service.");
+                logger.LogDebug("FMMS module initialized with settings service.");
             }
+
+            _settingsService.LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
+        /// <inheritdoc/>
         public IReadOnlyList<INavigationItem> GetNavigationItems()
         {
             return
             [
                 new NavigationItem(
-                    _localizer["Page_Files_Scanner_Title"],
-                    _localizer["Page_Files_Scanner_Description"],
+                    localizer["Page_Files_Scanner_Title"],
+                    localizer["Page_Files_Scanner_Description"],
                     MudBlazor.Icons.Material.Filled.Dashboard,
                     "files_scanner",
                     OSPlatforms.Windows,
                     true
                 ),
                 new NavigationItem(
-                    _localizer["Page_Folder_Scanner_Title"],
-                    _localizer["Page_Folder_Scanner_Description"],
+                    localizer["Page_Folder_Scanner_Title"],
+                    localizer["Page_Folder_Scanner_Description"],
                     MudBlazor.Icons.Material.Filled.FilterNone,
                     "directory_scanner",
                     OSPlatforms.Windows,
@@ -79,9 +110,10 @@ namespace OmniCore.Modules.FMMS
         #endregion
 
         #region IModuleSettingsProvider
-        public string ModuleName => _localizer["ModuleName"];
+        public string ModuleName => localizer["ModuleName"];
         public Type SettingsComponentType => typeof(FmmsSettingsView);
 
+        /// <inheritdoc/>
         public async Task ResetToDefaultsAsync()
         {
             try
@@ -93,16 +125,16 @@ namespace OmniCore.Modules.FMMS
 
                 await _settingsService.ResetToDefaultsAsync().ConfigureAwait(false);
 
-                if (_logger?.IsEnabled(LogLevel.Information) == true)
+                if (logger?.IsEnabled(LogLevel.Information) == true)
                 {
-                    _logger.LogInformation("FMMS settings reset to defaults successfully.");
+                    logger.LogInformation("FMMS settings reset to defaults successfully.");
                 }
             }
             catch (Exception ex)
             {
-                if (_logger?.IsEnabled(LogLevel.Error) == true)
+                if (logger?.IsEnabled(LogLevel.Error) == true)
                 {
-                    _logger.LogError(ex, "Failed to reset FMMS settings to defaults.");
+                    logger.LogError(ex, "Failed to reset FMMS settings to defaults.");
                 }
                 throw;
             }

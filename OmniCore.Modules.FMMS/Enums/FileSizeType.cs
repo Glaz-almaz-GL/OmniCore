@@ -6,6 +6,7 @@
         B,
         KB,
         MB,
-        GB
+        GB,
+        TB
     }
 }

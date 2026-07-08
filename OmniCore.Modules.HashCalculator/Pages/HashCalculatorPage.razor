@@ -1,0 +1,371 @@
+﻿@using Microsoft.Extensions.Localization
+@using MudBlazor
+@using OmniCore.Hybrid.Abstractions.Interfaces
+@using OmniCore.Modules.Hash.Abstractions.Enums
+@using OmniCore.Modules.Hash.Abstractions.Interfaces
+@using OmniCore.Modules.HashCalculator.Resources.Languages
+@inject IHashProviderFactory HashFactory
+@inject IClipboardService Clipboard
+@inject IStringLocalizer<HashResources> Localizer
+@inject ISnackbar Snackbar
+@page "/hash-calculator/calculator"
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Spacing="4">
+
+        <!-- Секция 1: Выбор алгоритма и формата -->
+        <MudCard Outlined="true">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="string"
+                                   @bind-Value="_selectedAlgorithm"
+                                   Label="@Localizer["Calculator_Algorithm"]"
+                                   Variant="Variant.Outlined"
+                                   Dense="true"
+                                   Disabled="@_isComputing">
+                            @foreach (var algo in _availableAlgorithms.Order())
+                            {
+                                <MudSelectItem T="string" Value="@algo">@algo</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="HashOutputFormat"
+                                   @bind-Value="_selectedFormat"
+                                   Label="@Localizer["Calculator_OutputFormat"]"
+                                   Variant="Variant.Outlined"
+                                   Dense="true"
+                                   Disabled="@_isComputing">
+                            <MudSelectItem T="HashOutputFormat" Value="HashOutputFormat.LowerHex">@Localizer["Format_LowerHex"]</MudSelectItem>
+                            <MudSelectItem T="HashOutputFormat" Value="HashOutputFormat.UpperHex">@Localizer["Format_UpperHex"]</MudSelectItem>
+                            <MudSelectItem T="HashOutputFormat" Value="HashOutputFormat.Base64">@Localizer["Format_Base64"]</MudSelectItem>
+                            <MudSelectItem T="HashOutputFormat" Value="HashOutputFormat.Base64Url">@Localizer["Format_Base64Url"]</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Секция 2: Режим ввода -->
+        <MudCard Outlined="true">
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true">
+
+                <!-- Вкладка: Текст -->
+                <MudTabPanel Text="@Localizer["Calculator_Mode_Text"]" Icon="@Icons.Material.Filled.TextFields">
+                    <MudStack Spacing="3" Style="padding: 10px;">
+                        <MudTextField T="string"
+                                      @bind-Value="_inputText"
+                                      Label="@Localizer["Calculator_InputText"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="5"
+                                      FullWidth="false"
+                                      Margin="Margin.None"
+                                      Disabled="@_isComputing" />
+
+                        <MudStack Row="true" Justify="Justify.FlexEnd">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="ComputeHashFromTextAsync"
+                                       Disabled="@(_isComputing || string.IsNullOrEmpty(_inputText))"
+                                       StartIcon="@Icons.Material.Filled.Calculate">
+                                @Localizer["Calculator_Compute"]
+                            </MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudTabPanel>
+
+                <!-- Вкладка: Файл -->
+                <MudTabPanel Text="@Localizer["Calculator_Mode_File"]" Icon="@Icons.Material.Filled.InsertDriveFile">
+                    <MudStack Spacing="2" Style="padding: 10px;">
+
+                        @if (_selectedFile is null)
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       OnClick="PickFileAsync"
+                                       Disabled="@_isComputing"
+                                       StartIcon="@Icons.Material.Filled.FolderOpen"
+                                       FullWidth="true"
+                                       Style="min-height: 100px;">
+                                @Localizer["Calculator_SelectFile"]
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudPaper Style="margin-bottom: 10px" Outlined="true" Class="pa-4">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Color="Color.Primary" />
+                                    <MudStack Spacing="0" Style="flex-grow: 1;">
+                                        <MudText Typo="Typo.body1" Style="word-break: break-all;">@_selectedFile.FileName</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @FormatFileSize(new FileInfo(_selectedFile.FullPath).Length)
+                                        </MudText>
+                                    </MudStack>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                   OnClick="ClearSelectedFile"
+                                                   Disabled="@_isComputing"
+                                                   Size="Size.Small" />
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                                @if (_isComputing)
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Error"
+                                               OnClick="CancelComputation"
+                                               StartIcon="@Icons.Material.Filled.Cancel">
+                                        @Localizer["Common_Cancel"]
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               OnClick="ComputeHashFromFileAsync"
+                                               StartIcon="@Icons.Material.Filled.Calculate">
+                                        @Localizer["Calculator_Compute"]
+                                    </MudButton>
+                                }
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudTabPanel>
+            </MudTabs>
+        </MudCard>
+
+        <!-- Секция 3: Результат -->
+        @if (!string.IsNullOrEmpty(_computedHash))
+        {
+            <MudCard Outlined="true" Style="border-left: 4px solid var(--mud-palette-primary);">
+                <MudCardContent>
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.subtitle1">
+                                <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Class="mr-2" />
+                                @Localizer["Calculator_Result"]
+                            </MudText>
+                            <MudStack Row="true" Spacing="1">
+                                <MudTooltip Text="@Localizer["Common_Copy"]">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                   OnClick="CopyResultAsync"
+                                                   Size="Size.Small" />
+                                </MudTooltip>
+                            </MudStack>
+                        </MudStack>
+
+                        <MudPaper Class="pa-3" Outlined="true">
+                            <MudText Typo="Typo.body2">@_computedHash</MudText>
+                        </MudPaper>
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @_computedHash.Length @Localizer["Calculator_Characters"]
+                        </MudText>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        }
+
+    </MudStack>
+</MudContainer>
+
+@code {
+    private string _selectedAlgorithm = "SHA-256";
+    private HashOutputFormat _selectedFormat = HashOutputFormat.LowerHex;
+    private string _inputText = string.Empty;
+    private string _computedHash = string.Empty;
+    private List<string> _availableAlgorithms = new();
+
+    // Для работы с файлами
+    private FileResult? _selectedFile;
+    private bool _isComputing;
+    private CancellationTokenSource? _cts;
+
+    protected override void OnInitialized()
+    {
+        _availableAlgorithms = HashFactory.GetAvailableAlgorithms().ToList();
+
+        if (_availableAlgorithms.Count > 0 && !_availableAlgorithms.Contains(_selectedAlgorithm))
+        {
+            _selectedAlgorithm = _availableAlgorithms[0];
+        }
+    }
+
+    #region Text Mode
+
+    private async Task ComputeHashFromTextAsync()
+    {
+        if (string.IsNullOrEmpty(_inputText) || string.IsNullOrEmpty(_selectedAlgorithm))
+            return;
+
+        if (!HashFactory.TryGetProvider(_selectedAlgorithm, out var provider) || provider is null)
+        {
+            Snackbar.Add(Localizer["Calculator_Error_ProviderNotFound"], Severity.Error);
+            return;
+        }
+
+        try
+        {
+            _isComputing = true;
+            _computedHash = string.Empty;
+            StateHasChanged();
+
+            _computedHash = provider.Calculate(_inputText, _selectedFormat, null);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{Localizer["Common_Error"]}: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isComputing = false;
+            StateHasChanged();
+        }
+    }
+
+    #endregion
+
+    #region File Mode
+
+    private async Task PickFileAsync()
+    {
+        try
+        {
+            var result = await FilePicker.Default.PickAsync();
+            if (result is not null && !string.IsNullOrEmpty(result.FullPath))
+            {
+                _selectedFile = result;
+                _computedHash = string.Empty;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{Localizer["Common_Error"]}: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ClearSelectedFile()
+    {
+        _selectedFile = null;
+        _computedHash = string.Empty;
+    }
+
+    private async Task ComputeHashFromFileAsync()
+    {
+        if (_selectedFile is null || string.IsNullOrEmpty(_selectedFile.FullPath))
+            return;
+
+        if (!HashFactory.TryGetProvider(_selectedAlgorithm, out var provider) || provider is null)
+        {
+            Snackbar.Add(Localizer["Calculator_Error_ProviderNotFound"], Severity.Error);
+            return;
+        }
+
+        _cts = new CancellationTokenSource();
+        var filePath = _selectedFile.FullPath;
+
+        try
+        {
+            _isComputing = true;
+            _computedHash = string.Empty;
+            StateHasChanged();
+
+            var fileInfo = new FileInfo(filePath);
+            var totalBytes = fileInfo.Length;
+
+            if (totalBytes == 0)
+            {
+                Snackbar.Add(Localizer["Calculator_Error_EmptyFile"], Severity.Warning);
+                return;
+            }
+
+            _computedHash = await provider.CalculateAsync(filePath, _selectedFormat, _cts.Token);
+
+            StateHasChanged();
+            Snackbar.Add(Localizer["Calculator_Success"], Severity.Success);
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add(Localizer["Calculator_Cancelled"], Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{Localizer["Common_Error"]}: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isComputing = false;
+            _cts?.Dispose();
+            _cts = null;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Вычисляет хеш с отслеживанием прогресса для больших файлов.
+    /// </summary>
+    private async Task<string> ComputeHashWithProgressAsync(
+        IHashProvider provider,
+        Stream stream,
+        long totalBytes,
+        IProgress<double> progress,
+        CancellationToken cancellationToken)
+    {
+        var hash = await provider.CalculateAsync(stream, _selectedFormat, cancellationToken);
+
+        return hash;
+    }
+
+    private void CancelComputation()
+    {
+        _cts?.Cancel();
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private string FormatFileSize(double bytes)
+    {
+        if (bytes == 0) return "0 Bit";
+
+        if (bytes < 1)
+        {
+            double bits = bytes * 8;
+            return $"{bits:F2} Bit";
+        }
+
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        int unitIndex = 0;
+        double size = bytes;
+
+        while (size >= 1024 && unitIndex < units.Length - 1)
+        {
+            size /= 1024;
+            unitIndex++;
+        }
+
+        return $"{size:F2} {units[unitIndex]}";
+    }
+
+    private async Task CopyResultAsync()
+    {
+        if (string.IsNullOrEmpty(_computedHash))
+            return;
+
+        try
+        {
+            await Clipboard.WriteTextAsync(_computedHash);
+            Snackbar.Add(Localizer["Common_Copied"], Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{Localizer["Common_Error"]}: {ex.Message}", Severity.Error);
+        }
+    }
+
+    #endregion
+}
