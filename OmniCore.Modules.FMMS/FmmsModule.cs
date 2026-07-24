@@ -1,17 +1,22 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 using OmniCore.Core.Entities;
 using OmniCore.Core.Enums;
 using OmniCore.Core.Interfaces;
-using OmniCore.Hybrid.Abstractions.Services;
-using OmniCore.Hybrid.Abstractions.Interfaces;
+using OmniCore.Modules.FMMS.Abstractions.Interfaces;
+using OmniCore.Modules.FMMS.Components.Pages;
 using OmniCore.Modules.FMMS.Constants;
-using OmniCore.Modules.FMMS.Interfaces;
-using OmniCore.Modules.FMMS.Pages;
 using OmniCore.Modules.FMMS.Resources.Languages;
 using OmniCore.Modules.FMMS.Services;
-using MudBlazor.Services;
+using OmniCore.Modules.Hash.Abstractions.Factories;
+using OmniCore.Modules.Hash.Abstractions.Interfaces;
+using OmniCore.Modules.Hash.Providers.Cryptographic.Legacy;
+using OmniCore.Modules.Hash.Providers.Cryptographic.SHA2;
+using OmniCore.Modules.Hash.Providers.Cryptographic.SHA3;
+using OmniCore.Modules.Hash.Providers.NonCryptographic;
+using OmniCore.Modules.Hash.Providers.NonCryptographic.XXH;
+using OmniCore.Modules.Hash.Providers.NonCryptographic.XXH3;
 
 namespace OmniCore.Modules.FMMS
 {
@@ -50,12 +55,41 @@ namespace OmniCore.Modules.FMMS
         public void AddModuleServices(IServiceCollection services)
         {
             services.AddMudServices();
-            services.AddLocalization();
             services.AddSingleton<FmmsSettingsService>();
-            services.AddSingleton<IFileScannerService, FileScannerService>();
-            services.AddSingleton<IDirectoryScannerService, DirectoryScannerService>();
-            services.AddSingleton<IFilePageService, FilePageService>();
-            services.AddScoped<IClipboardService, ClipboardService>();
+            services.AddTransient<IFileScannerService, FileScannerService>();
+            services.AddTransient<IDirectoryScannerService, DirectoryScannerService>();
+            services.AddTransient<IFilePageService, FilePageService>();
+            services.AddSingleton<IModuleSettingsProvider, FmmsSettingsView>();
+
+            // <-------- HASH -------->
+
+            // Legacy hash providers
+            services.AddTransient<IHashProvider, MD5HashProvider>();
+            services.AddTransient<IHashProvider, SHA1HashProvider>();
+
+            // SHA-2 hash providers
+            services.AddTransient<IHashProvider, SHA256HashProvider>();
+            services.AddTransient<IHashProvider, SHA384HashProvider>();
+            services.AddTransient<IHashProvider, SHA512HashProvider>();
+
+            // SHA-3 hash providers
+            services.AddTransient<IHashProvider, SHA3_256HashProvider>();
+            services.AddTransient<IHashProvider, SHA3_384HashProvider>();
+            services.AddTransient<IHashProvider, SHA3_512HashProvider>();
+
+            // CRC hash providers
+            services.AddTransient<IHashProvider, Crc32HashProvider>();
+
+            // XXH hash providers
+            services.AddTransient<IHashProvider, XxHash32Provider>();
+            services.AddTransient<IHashProvider, XxHash64Provider>();
+            services.AddTransient<IHashProvider, XxHash128Provider>();
+
+            // XXH3 hash providers
+            services.AddTransient<IHashProvider, XxHash3Provider>();
+
+            // Register the HashProviderFactory as a singleton
+            services.AddSingleton<IHashProviderFactory, HashProviderFactory>();
 
             if (logger?.IsEnabled(LogLevel.Information) == true)
             {

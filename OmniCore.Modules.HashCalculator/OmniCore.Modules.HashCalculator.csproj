@@ -20,6 +20,8 @@
     <ProjectReference Include="..\OmniCore.Core\OmniCore.Core.csproj" />
     <ProjectReference Include="..\OmniCore.Hybrid.Abstractions\OmniCore.Hybrid.Abstractions.csproj" />
     <ProjectReference Include="..\OmniCore.Modules.Hash.Abstractions\OmniCore.Modules.Hash.Abstractions.csproj" />
+    <ProjectReference Include="..\OmniCore.Modules.Hash.Providers\OmniCore.Modules.Hash.Providers.csproj" />
+    <ProjectReference Include="..\OmniCore.Shared.Core\OmniCore.Shared.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -68,13 +68,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CommunityToolkit.Maui" Version="14.2.0" />
-		<PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.9" />
-		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.71" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.71" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
-		<PackageReference Include="MudBlazor" Version="9.5.0" />
-		<PackageReference Include="System.Private.Uri" Version="4.3.2" />
+		<PackageReference Include="CommunityToolkit.Maui" Version="14.2.2" />
+		<PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.10" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.90" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.90" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+		<PackageReference Include="MudBlazor" Version="9.7.0" />
 	</ItemGroup>
 
 	<ItemGroup>

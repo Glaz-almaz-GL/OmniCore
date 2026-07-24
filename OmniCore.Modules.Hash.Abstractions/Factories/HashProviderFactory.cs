@@ -1,7 +1,6 @@
 ﻿using OmniCore.Modules.Hash.Abstractions.Interfaces;
 using OmniCore.Modules.Hash.Abstractions.Models;
 using System.Collections.Concurrent;
-using System.Linq;
 
 namespace OmniCore.Modules.Hash.Abstractions.Factories
 {
@@ -288,13 +287,10 @@ namespace OmniCore.Modules.Hash.Abstractions.Factories
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(algorithmName);
 
-            if (!_providers.TryGetValue(algorithmName, out IHashProvider? provider))
-            {
-                throw new KeyNotFoundException(
-                    $"Провайдер с именем '{algorithmName}' не найден.");
-            }
-
-            return provider.Metadata;
+            return !_providers.TryGetValue(algorithmName, out IHashProvider? provider)
+                ? throw new KeyNotFoundException(
+                    $"Провайдер с именем '{algorithmName}' не найден.")
+                : provider.Metadata;
         }
 
         /// <inheritdoc/>
@@ -411,13 +407,10 @@ namespace OmniCore.Modules.Hash.Abstractions.Factories
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(categoryName);
 
-            if (!_categories.TryGetValue(categoryName, out HashAlgorithmCategory category))
-            {
-                throw new KeyNotFoundException(
-                    $"Категория с именем '{categoryName}' не найдена.");
-            }
-
-            return category;
+            return !_categories.TryGetValue(categoryName, out HashAlgorithmCategory category)
+                ? throw new KeyNotFoundException(
+                    $"Категория с именем '{categoryName}' не найдена.")
+                : category;
         }
 
         /// <inheritdoc/>

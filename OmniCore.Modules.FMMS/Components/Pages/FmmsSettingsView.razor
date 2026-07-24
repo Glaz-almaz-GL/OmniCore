@@ -1,0 +1,249 @@
+﻿@using System.Diagnostics
+@using MudBlazor
+@using OmniCore.Modules.FMMS.Abstractions.Enums
+
+<MudStack Spacing="4">
+
+    <!-- Секция 1: Общие настройки сканирования -->
+    <MudCard Square="true">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@L["Settings_General_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="2">
+                <MudSelect T="FileSizeType"
+                            ValueChanged="OnSizeTypeSettingChanged"
+                            Value="SettingsService.FilesScanningSettings.DisplayedSizeType"
+                            Label="@L["Settings_DisplayedSizeType"]"
+                            FullWidth="true"
+                            Variant="Variant.Outlined" Dense="true">
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.Bit">@L["SizeType_Bit"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.B">@L["SizeType_B"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.KB">@L["SizeType_KB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.MB">@L["SizeType_MB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.GB">@L["SizeType_GB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.TB">@L["SizeType_TB"]</MudSelectItem>
+                    <MudSelectItem T="FileSizeType" Value="@FileSizeType.PB">@L["SizeType_PB"]</MudSelectItem>
+                </MudSelect>
+
+                <MudSwitch T="bool"
+                           ValueChanged="OnArchiveSettingsChanged"
+                           Value="SettingsService.FilesScanningSettings.ScanArchives"
+                           Label="@L["Settings_ScanArchives"]"
+                           Color="Color.Primary" />
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Секция 2: Настройки хеширования -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@L["Settings_Hashing_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle2">@L["Settings_Hashing_Algorithms"]</MudText>
+                <MudGrid>
+                    @foreach (var a in SettingsService.FilesScanningSettings.Hashing.AlgorithmsToCalculate)
+                    {
+                        Debug.WriteLine("Alghorithms in settings: " + a);
+                    }
+
+                    @foreach (var algo in _availableAlgorithms.Order())
+                    {
+                        var isCalculated = SettingsService.FilesScanningSettings.Hashing.AlgorithmsToCalculate.Contains(algo);
+
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudSwitch T="bool"
+                                       Value="@isCalculated"
+                                       ValueChanged="@(val => OnAlgorithmToggled(algo, val))"
+                                       Label="@algo"
+                                       Color="Color.Primary" />
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <MudDivider />
+
+                <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                    <MudNumericField T="long"
+                                     Value="SettingsService.FilesScanningSettings.Hashing.MaxFileSizeBytes"
+                                     ValueChanged="OnMaxSizeSettingsChanged"
+                                     Label="@L["Settings_Hashing_MaxSize"]"
+                                     HelperText="@L["Settings_Hashing_MaxSize_Description"]"
+                                     Min="0" Variant="Variant.Outlined"
+                                     Style="max-width: 200px;" />
+
+                    <MudSwitch T="bool"
+                               ValueChanged="OnCalculateSettingsChanged"
+                               Value="SettingsService.FilesScanningSettings.Hashing.CalculateInParallel"
+                               Label="@L["Settings_Hashing_Parallel"]"
+                               Color="Color.Primary" />
+
+                    <MudNumericField T="int"
+                                     ValueChanged="OnParallelismSettingsChanged"
+                                     Value="SettingsService.FilesScanningSettings.Hashing.MaxDegreeOfParallelism"
+                                     Label="@L["Settings_Hashing_MaxParallelism"]"
+                                     HelperText="@L["Settings_Hashing_MaxParallelism_Description"]"
+                                     Min="1" Variant="Variant.Outlined"
+                                     Style="max-width: 200px;" />
+                </MudStack>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Секция 3: Видимость колонок -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@L["Settings_Columns_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudGrid>
+                    @foreach (var kvp in SettingsService.FilesScanningSettings.AnalyzeSettings.FieldsToAnalyze)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudSwitch T="bool"
+                                       Value="@kvp.Value"
+                                       ValueChanged="@(val => OnStandardColumnToggled(kvp.Key, val))"
+                                       Label="@GetLocalizedColumnName(kvp.Key)"
+                                       Color="Color.Primary" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Секция 4: Правила подсчета страниц -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@L["Settings_PagesRules_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.FlexStart" AlignItems="AlignItems.End">
+                    <MudTextField T="string"
+                                  @bind-Value="_newRuleExt"
+                                  Placeholder=".png"
+                                  Label="@L["Settings_PagesRules_Extension"]"
+                                  FullWidth="false"
+                                  Variant="Variant.Outlined"
+                                  Style="max-width: 150px;"
+                                  OnKeyDown="@HandleEnterKeyPages" />
+                    <MudNumericField T="int"
+                                     @bind-Value="_newRulePages"
+                                     Label="@L["Settings_PagesRules_Value"]"
+                                     Min="1"
+                                     FullWidth="false"
+                                     Variant="Variant.Outlined"
+                                     Style="max-width: 150px;" />
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddPageRule">
+                        @L["Common_Add"]
+                    </MudButton>
+                </MudStack>
+
+                @if (SettingsService.FilesScanningSettings.PagesCountCustomRules.Any())
+                {
+                    <MudTable Items="SettingsService.FilesScanningSettings.PagesCountCustomRules.ToList()"
+                              Hover="true"
+                              Striped="true"
+                              Elevation="0">
+                        <HeaderContent>
+                            <MudTh>@L["Settings_PagesRules_Extension"]</MudTh>
+                            <MudTh>@L["Settings_PagesRules_Value"]</MudTh>
+                            <MudTh Style="width:100px;"></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Ext">@context.Key</MudTd>
+                            <MudTd DataLabel="Val">@context.Value</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => RemovePageRule(context.Key))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Settings_PagesRules_Empty"]</MudText>
+                }
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Секция 5: Кастомные расширения архивов -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@L["Settings_Archives_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.End">
+                    <MudTextField T="string"
+                                  @bind-Value="_newArchiveExt"
+                                  Label="@L["Settings_PagesRules_Extension"]"
+                                  Placeholder=".rar"
+                                  Style="max-width: 200px;"
+                                  FullWidth="false"
+                                  Variant="Variant.Outlined"
+                                  OnKeyDown="@HandleEnterKey" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddArchiveExtension">
+                        @L["Common_Add"]
+                    </MudButton>
+                </MudStack>
+
+                <MudDivider/>
+
+                <MudChipSet T="string">
+                    @foreach (var ext in SettingsService.FilesScanningSettings.CustomArchiveExtensions.Order())
+                    {
+                        <MudChip T="string"
+                                 Text="@ext"
+                                 Color="Color.Primary"
+                                 OnClose="@(() => RemoveArchiveExtension(ext))"
+                                 CloseIcon="@Icons.Material.Filled.Close" />
+                    }
+                </MudChipSet>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Секция 6: Настройки директорий -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@L["Settings_DirectoryScan_Title"]</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudSwitch T="bool"
+                           ValueChanged="OnIncludeHiddenSettingsChanged"
+                           Value="SettingsService.DirectoryScanningSettings.IncludeHidden"
+                           Label="@L["Settings_IncludeHiddenFolders"]"
+                           Color="Color.Primary" />
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Кнопка явного сохранения -->
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SaveExplicitly" StartIcon="@Icons.Material.Filled.Save">
+            @L["Common_Save"]
+        </MudButton>
+    </MudStack>
+</MudStack>

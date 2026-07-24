@@ -1,0 +1,156 @@
+﻿@using OmniCore.Modules.FMMS.Abstractions.Models
+@using OmniCore.Shared.Core.Platforms
+@using OmniCore.Shared.UI.Components
+@using Microsoft.AspNetCore.Components.Web
+@using MudBlazor
+@page "/fmms/files_scanner"
+
+<MudContainer @onkeydown="OnDataGridKeyDown" MaxWidth="MaxWidth.False" Class="mt-4">
+    <MudStack Spacing="3">
+
+        <!-- Панель управления -->
+        <MudCard Outlined="true">
+            <MudCardContent>
+                <MudStack Row="true" Spacing="2">
+                    <PathPickerComponent @bind-Value="_dirPath"
+                                         Disabled="@_isScanning"
+                                         IsFolder="true"
+                                         Placeholder="@L["Scanner_FolderPath"]"
+                                         TooltipText="@(PlatformSupport.IsFolderPickerSupported ? L["Tooltip_Select_Folder"].Value : L["Tooltip_Folder_Picker_Not_Supported"].Value)"
+                                         Icon="@Icons.Material.Filled.FolderOpen"
+                                         IconStyle="width: 56px; height: 56px;" />
+
+                    @if (!_isScanning)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Start"
+                                       Style="width: 56px; height: 56px;"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="StartScanningAsync"
+                                       Disabled="@(string.IsNullOrWhiteSpace(_dirPath) || !Directory.Exists(_dirPath))" />
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                       Style="width: 56px; height: 56px;"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       OnClick="CancelScanning" />
+                    }
+                </MudStack>
+
+                @if (_isScanning || _processedFilesCount > 0)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-4">
+                        <MudText Typo="Typo.body2" Style="min-width: 180px;">
+                            @L["Scanner_Processed"]: <strong>@_processedFilesCount</strong>
+                        </MudText>
+                        <MudProgressLinear Color="Color.Primary"
+                                           Value="@_processedFilesCount"
+                                           Indeterminate="@(_processedFilesCount == 0)"
+                                           Style="flex-grow: 1;" />
+                    </MudStack>
+                }
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Таблица результатов -->
+        <MudCard Outlined="true">
+            <MudCardContent Style="padding: 0;">
+                <div style="overflow-x: auto; max-height: 100%; overflow-y: auto;">
+                    <MudDataGrid T="ScannedFile"
+                                 Items="@_scannedFiles"
+                                 SelectedItems="@_selectedRows"
+                                 SelectedItemsChanged="@SelectedItemsChanged"
+                                 Hover="true"
+                                 Striped="true"
+                                 Dense="true"
+                                 Elevation="0"
+                                 Outlined="false"
+                                 HorizontalScrollbar="true"
+                                 ColumnResizeMode="ResizeMode.Column"
+                                 Filterable="true"
+                                 ReadOnly="true"
+                                 SortMode="SortMode.Single"
+                                 MultiSelection="true"
+                                 SelectOnRowClick="true"
+                                 Bordered="true"
+                                 RowContextMenuClick="@OpenMenuContent"
+                                 RowsPerPage="20">
+                        <Columns>
+                            <SelectColumn />
+
+                            @foreach (var column in GetVisibleColumnsConfig())
+                            {
+                                <DynamicColumn Config="@column" />
+                            }
+                        </Columns>
+                        <PagerContent>
+                            <MudDataGridPager T="ScannedFile" RowsPerPageString="@L["Rows_Per_Page"]" PageSizeOptions="@(new int[] { 20, 50, 100 })" />
+                        </PagerContent>
+                    </MudDataGrid>
+
+                    <!-- Контекстное меню -->
+                    <MudMenu Dense="true"
+                             DropShadow="true"
+                             PositionAtCursor="true"
+                             @ref="_contextMenu"
+                             Class="custom-context-menu">
+
+                        <!-- Группа 1: Открытие -->
+                        <MudMenuItem OnClick="@(() => OpenFile(_contextRow?.FullPath))"
+                                     Icon="@Icons.Material.Outlined.FileOpen">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+                                <MudText Typo="Typo.body2">@L["Menu_Open_File"]</MudText>
+                                <MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + O</MudChip>
+                            </MudStack>
+                        </MudMenuItem>
+
+                        <MudMenuItem OnClick="@(() => OpenFileDirectory(_contextRow?.FullPath))"
+                                     Icon="@Icons.Material.Outlined.FolderOpen">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+                                <MudText Typo="Typo.body2">@L["Menu_Open_Folder"]</MudText>
+                                <MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + Shift + O</MudChip>
+                            </MudStack>
+                        </MudMenuItem>
+
+                        <MudDivider Class="my-1" />
+
+                        <!-- Группа 2: Копирование (одиночное) -->
+                        <MudMenuItem OnClick="@CopySingleInfoAsync"
+                                     Icon="@Icons.Material.Outlined.FileCopy">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+                                <MudText Typo="Typo.body2">@L["Menu_Copy_Info"]</MudText>
+                                <MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + C</MudChip>
+                            </MudStack>
+                        </MudMenuItem>
+
+                        <MudMenuItem OnClick="@CopySingleInfoTsvAsync"
+                                     Icon="@Icons.Material.TwoTone.FileCopy">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="justify-space-between" Style="width: 100%;">
+                                <MudText Typo="Typo.body2">@L["Menu_Copy_Info_TSV"]</MudText>
+                                <MudChip T="string" Variant="Variant.Text" Size="Size.Small" Color="Color.Default" Class="ml-4">Ctrl + Shift + C</MudChip>
+                            </MudStack>
+                        </MudMenuItem>
+
+                        @if (_selectedRows != null && _selectedRows.Count > 1)
+                        {
+                            <MudDivider Class="my-1" />
+
+                            <!-- Группа 3: Массовые операции -->
+                            <MudMenuItem OnClick="@CopySelectedInfoAsync"
+                                         Icon="@Icons.Material.Outlined.CopyAll">
+                                <MudText Typo="Typo.body2">@L["Menu_Copy_Info_All"] (@_selectedRows.Count)</MudText>
+                            </MudMenuItem>
+
+                            <MudMenuItem OnClick="@CopySelectedInfoTsvAsync"
+                                         Icon="@Icons.Material.TwoTone.CopyAll">
+                                <MudText Typo="Typo.body2">@L["Menu_Copy_Info_TSV_All"] (@_selectedRows.Count)</MudText>
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudStack>
+</MudContainer>

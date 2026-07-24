@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using OmniCore.Modules.FMMS.Resources.Settings;
+using OmniCore.Modules.FMMS.Abstractions.Models;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -19,14 +19,18 @@ namespace OmniCore.Modules.FMMS.Services
             Converters = { new JsonStringEnumConverter() }
         };
 
-        public event Action? OnSettingsChanged;
+        public event Action? OnSettingsSaved;
+        public event Action? OnSettingsLoaded;
+
+        public FilesScanningSettings FilesScanningSettings { get; private set; }
+        public DirectoryScanningSettings DirectoryScanningSettings { get; private set; }
 
         public FmmsSettingsService(ILogger<FmmsSettingsService>? logger = null)
         {
             _logger = logger;
 
             // Cross-platform path for MAUI
-            string appDataDirectory = FileSystem.AppDataDirectory;
+            string appDataDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             _filePath = Path.Combine(appDataDirectory, "fmms_settings.json");
 
             // Initialize with default values
@@ -38,9 +42,6 @@ namespace OmniCore.Modules.FMMS.Services
                 _logger.LogDebug("FMMS settings service initialized. File path: {FilePath}", _filePath);
             }
         }
-
-        public FilesScanningSettings FilesScanningSettings { get; private set; }
-        public DirectoryScanningSettings DirectoryScanningSettings { get; private set; }
 
         public async Task LoadAsync(CancellationToken cancellationToken = default)
         {
@@ -56,7 +57,19 @@ namespace OmniCore.Modules.FMMS.Services
                 }
 
                 string json = await File.ReadAllTextAsync(_filePath, cancellationToken).ConfigureAwait(false);
-                ApplySettings(JsonSerializer.Deserialize<SavedSettingsContainer>(json, _jsonOptions));
+
+                SavedSettingsContainer? savedSettings = JsonSerializer.Deserialize<SavedSettingsContainer>(json, _jsonOptions);
+
+                if (savedSettings is null ||
+                    savedSettings.FilesScanningSettings is null ||
+                    savedSettings.DirectoryScanningSettings is null)
+                {
+                    _logger?.LogWarning("FMMS settings file is empty or corrupted (null values). Resetting to defaults.");
+                    await ResetToDefaultsAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
+                ApplySettings(savedSettings);
             }
             catch (JsonException jsonEx)
             {
@@ -64,7 +77,8 @@ namespace OmniCore.Modules.FMMS.Services
                 {
                     _logger.LogError(jsonEx, "FMMS settings deserialization error. File is corrupted.");
                 }
-                HandleCorruptedFile();
+
+                await HandleCorruptedFileAsync();
             }
             catch (OperationCanceledException ex)
             {
@@ -79,28 +93,34 @@ namespace OmniCore.Modules.FMMS.Services
                 {
                     _logger.LogError(ex, "Unexpected error loading FMMS settings. Default settings will be used.");
                 }
-                ResetToDefaultValues();
+
+                await ResetToDefaultsAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
         private void ApplySettings(SavedSettingsContainer? savedSettings)
         {
-            if (savedSettings != null)
+            ArgumentNullException.ThrowIfNull(savedSettings);
+            ArgumentNullException.ThrowIfNull(savedSettings.FilesScanningSettings);
+            ArgumentNullException.ThrowIfNull(savedSettings.DirectoryScanningSettings);
+
+            FilesScanningSettings = savedSettings.FilesScanningSettings;
+            DirectoryScanningSettings = savedSettings.DirectoryScanningSettings;
+
+            if (_logger?.IsEnabled(LogLevel.Information) == true)
             {
-                if (savedSettings.FilesScanningSettings != null)
-                    FilesScanningSettings = savedSettings.FilesScanningSettings;
-
-                if (savedSettings.DirectoryScanningSettings != null)
-                    DirectoryScanningSettings = savedSettings.DirectoryScanningSettings;
-
-                if (_logger?.IsEnabled(LogLevel.Information) == true)
-                {
-                    _logger.LogInformation("FMMS settings loaded successfully from {FilePath}.", _filePath);
-                }
+                _logger.LogInformation("FMMS settings loaded successfully from {FilePath}.", _filePath);
             }
+
+            OnSettingsLoaded?.Invoke();
         }
 
-        public async Task SaveAsync(CancellationToken cancellationToken = default)
+        public async Task SaveCurrentAsync(CancellationToken cancellationToken = default)
+        {
+            await SaveAsync(FilesScanningSettings, DirectoryScanningSettings, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task SaveAsync(FilesScanningSettings filesScanningSettings, DirectoryScanningSettings directoryScanningSettings, CancellationToken cancellationToken = default)
         {
             await _saveLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -111,10 +131,10 @@ namespace OmniCore.Modules.FMMS.Services
                     Directory.CreateDirectory(directory);
                 }
 
-                var container = new SavedSettingsContainer
+                SavedSettingsContainer container = new()
                 {
-                    FilesScanningSettings = FilesScanningSettings,
-                    DirectoryScanningSettings = DirectoryScanningSettings
+                    FilesScanningSettings = filesScanningSettings,
+                    DirectoryScanningSettings = directoryScanningSettings
                 };
 
                 string json = JsonSerializer.Serialize(container, _jsonOptions);
@@ -125,7 +145,7 @@ namespace OmniCore.Modules.FMMS.Services
                     _logger.LogInformation("FMMS settings saved successfully to {FilePath}.", _filePath);
                 }
 
-                OnSettingsChanged?.Invoke();
+                OnSettingsSaved?.Invoke();
             }
             catch (OperationCanceledException ex)
             {
@@ -150,11 +170,11 @@ namespace OmniCore.Modules.FMMS.Services
         public async Task ResetToDefaultsAsync(CancellationToken cancellationToken = default)
         {
             ResetToDefaultValues();
-            await SaveAsync(cancellationToken).ConfigureAwait(false);
+            await SaveCurrentAsync(cancellationToken).ConfigureAwait(false);
 
             if (_logger?.IsEnabled(LogLevel.Information) == true)
             {
-                _logger.LogInformation("FMMS settings reset to defaults.");
+                _logger.LogInformation("FMMS settings have been reset to default values.");
             }
         }
 
@@ -164,7 +184,7 @@ namespace OmniCore.Modules.FMMS.Services
             DirectoryScanningSettings = new DirectoryScanningSettings();
         }
 
-        private void HandleCorruptedFile()
+        private async Task HandleCorruptedFileAsync()
         {
             try
             {
@@ -184,10 +204,11 @@ namespace OmniCore.Modules.FMMS.Services
                 }
             }
 
-            ResetToDefaultValues();
+            await ResetToDefaultsAsync();
+            OnSettingsLoaded?.Invoke();
         }
 
-        internal sealed class SavedSettingsContainer
+        internal sealed record SavedSettingsContainer
         {
             public FilesScanningSettings? FilesScanningSettings { get; set; }
             public DirectoryScanningSettings? DirectoryScanningSettings { get; set; }

@@ -232,6 +232,33 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         }
         
         /// <summary>
+        ///   Ищет локализованную строку, похожую на Folder selection is not supported on your operating system..
+        /// </summary>
+        public static string Dialog_Enter_Path_Description {
+            get {
+                return ResourceManager.GetString("Dialog_Enter_Path_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Enter the path.
+        /// </summary>
+        public static string Dialog_Enter_Path_Title {
+            get {
+                return ResourceManager.GetString("Dialog_Enter_Path_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Path to the folder.
+        /// </summary>
+        public static string Dialog_Path_Label {
+            get {
+                return ResourceManager.GetString("Dialog_Path_Label", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Ищет локализованную строку, похожую на Directory Analyze.
         /// </summary>
         public static string Directory_Analyzer_Title {
@@ -349,6 +376,15 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         }
         
         /// <summary>
+        ///   Ищет локализованную строку, похожую на Rows_Per_Page.
+        /// </summary>
+        public static string Rows_Per_Page {
+            get {
+                return ResourceManager.GetString("Rows_Per_Page", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Ищет локализованную строку, похожую на Cancel.
         /// </summary>
         public static string Scanner_Cancel {
@@ -385,7 +421,16 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Select folder.
+        ///   Ищет локализованную строку, похожую на Scanner_Processed.
+        /// </summary>
+        public static string Scanner_Processed {
+            get {
+                return ResourceManager.GetString("Scanner_Processed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на You can enter the path manually or select a folder using the button on the right.
         /// </summary>
         public static string Scanner_SelectFolder {
             get {
@@ -457,11 +502,29 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         }
         
         /// <summary>
+        ///   Ищет локализованную строку, похожую на Directory scanning settings.
+        /// </summary>
+        public static string Settings_DirectoryScan_Title {
+            get {
+                return ResourceManager.GetString("Settings_DirectoryScan_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Ищет локализованную строку, похожую на Displayed size unit.
         /// </summary>
         public static string Settings_DisplayedSizeType {
             get {
                 return ResourceManager.GetString("Settings_DisplayedSizeType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Display settings.
+        /// </summary>
+        public static string Settings_DisplayOptions_Title {
+            get {
+                return ResourceManager.GetString("Settings_DisplayOptions_Title", resourceCulture);
             }
         }
         
@@ -475,11 +538,83 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         }
         
         /// <summary>
+        ///   Ищет локализованную строку, похожую на Available hash algorithms.
+        /// </summary>
+        public static string Settings_Hashing_Algorithms {
+            get {
+                return ResourceManager.GetString("Settings_Hashing_Algorithms", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Max. parallel processes.
+        /// </summary>
+        public static string Settings_Hashing_MaxParallelism {
+            get {
+                return ResourceManager.GetString("Settings_Hashing_MaxParallelism", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на 0 to lift restrictions..
+        /// </summary>
+        public static string Settings_Hashing_MaxParallelism_Description {
+            get {
+                return ResourceManager.GetString("Settings_Hashing_MaxParallelism_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Max. file size for hash.
+        /// </summary>
+        public static string Settings_Hashing_MaxSize {
+            get {
+                return ResourceManager.GetString("Settings_Hashing_MaxSize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Size in bytes (B). 0 to remove limits..
+        /// </summary>
+        public static string Settings_Hashing_MaxSize_Description {
+            get {
+                return ResourceManager.GetString("Settings_Hashing_MaxSize_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Calculate the hash in parallel.
+        /// </summary>
+        public static string Settings_Hashing_Parallel {
+            get {
+                return ResourceManager.GetString("Settings_Hashing_Parallel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Ищет локализованную строку, похожую на Calculate Hash Sums.
         /// </summary>
         public static string Settings_Hashing_Title {
             get {
                 return ResourceManager.GetString("Settings_Hashing_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Scan hidden directories.
+        /// </summary>
+        public static string Settings_IncludeHiddenFolders {
+            get {
+                return ResourceManager.GetString("Settings_IncludeHiddenFolders", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Invalid file extension.
+        /// </summary>
+        public static string Settings_InvalidExtension {
+            get {
+                return ResourceManager.GetString("Settings_InvalidExtension", resourceCulture);
             }
         }
         
@@ -547,6 +682,15 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         }
         
         /// <summary>
+        ///   Ищет локализованную строку, похожую на Bits (Bit).
+        /// </summary>
+        public static string SizeType_Bit {
+            get {
+                return ResourceManager.GetString("SizeType_Bit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Ищет локализованную строку, похожую на Gigabytes (GB).
         /// </summary>
         public static string SizeType_GB {
@@ -570,6 +714,24 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         public static string SizeType_MB {
             get {
                 return ResourceManager.GetString("SizeType_MB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Petabyte (PB).
+        /// </summary>
+        public static string SizeType_PB {
+            get {
+                return ResourceManager.GetString("SizeType_PB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Terabytes (TB).
+        /// </summary>
+        public static string SizeType_TB {
+            get {
+                return ResourceManager.GetString("SizeType_TB", resourceCulture);
             }
         }
         
@@ -687,6 +849,24 @@ namespace OmniCore.Modules.FMMS.Resources.Languages {
         public static string Table_UnCompressed_Size {
             get {
                 return ResourceManager.GetString("Table_UnCompressed_Size", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на Folder selection is not supported on your operating system..
+        /// </summary>
+        public static string Tooltip_Folder_Picker_Not_Supported {
+            get {
+                return ResourceManager.GetString("Tooltip_Folder_Picker_Not_Supported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на You can enter the path manually or select a folder using the button on the right.
+        /// </summary>
+        public static string Tooltip_Select_Folder {
+            get {
+                return ResourceManager.GetString("Tooltip_Select_Folder", resourceCulture);
             }
         }
     }

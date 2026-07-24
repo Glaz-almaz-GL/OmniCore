@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
-using OmniCore.Modules.FMMS.Interfaces;
-using OmniCore.Modules.FMMS.Models;
-using OmniCore.Modules.FMMS.Resources.Settings;
+using OmniCore.Modules.FMMS.Abstractions.Interfaces;
+using OmniCore.Modules.FMMS.Abstractions.Models;
 using OmniCore.Modules.Hash.Abstractions.Enums;
 using OmniCore.Modules.Hash.Abstractions.Interfaces;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace OmniCore.Modules.FMMS.Services
@@ -37,7 +37,7 @@ namespace OmniCore.Modules.FMMS.Services
         /// <para><see cref="EnumerationOptions.AttributesToSkip"/>: репарс-пойнты (симлинки, junction) игнорируются
         /// для предотвращения зацикливания.</para>
         /// </remarks>
-        private readonly EnumerationOptions _enumerationOptions = new()
+        private static readonly EnumerationOptions EnumerationOptions = new()
         {
             RecurseSubdirectories = true,
             IgnoreInaccessible = true,
@@ -67,7 +67,7 @@ namespace OmniCore.Modules.FMMS.Services
         public async IAsyncEnumerable<ScannedFile> ScanDirectoryAsync(
             string directoryPath,
             FilesScanningSettings settings,
-            IProgress<int> progress,
+            IProgress<int>? progress = null,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             IEnumerable<string>? filePaths = TryEnumerateFiles(directoryPath);
@@ -77,19 +77,22 @@ namespace OmniCore.Modules.FMMS.Services
             }
 
             int processedFiles = 0;
+            int fileIndex = 0;
             int dirPathLength = Path.TrimEndingDirectorySeparator(directoryPath).Length + 1;
             List<(string AlgorithmName, IHashProvider Provider)> hashProviders = InitializeHashProviders(settings);
 
             foreach (string filePath in filePaths)
             {
+                fileIndex++;
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 ScannedFile? scannedFile = await TryProcessSingleFileAsync(
-                    filePath, dirPathLength, settings, hashProviders, cancellationToken).ConfigureAwait(false);
+                    filePath, dirPathLength, fileIndex, settings, hashProviders, cancellationToken).ConfigureAwait(false);
 
-                if (scannedFile is not null)
+                if (scannedFile.HasValue)
                 {
-                    yield return scannedFile;
+                    yield return scannedFile.Value;
                 }
 
                 processedFiles++;
@@ -114,7 +117,7 @@ namespace OmniCore.Modules.FMMS.Services
         {
             try
             {
-                return Directory.EnumerateFiles(directoryPath, "*.*", _enumerationOptions);
+                return Directory.EnumerateFiles(directoryPath, "*.*", EnumerationOptions);
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -173,14 +176,14 @@ namespace OmniCore.Modules.FMMS.Services
         private async Task<ScannedFile?> TryProcessSingleFileAsync(
             string filePath,
             int dirPathLength,
+            int fileIndex,
             FilesScanningSettings settings,
             IReadOnlyList<(string AlgorithmName, IHashProvider Provider)> hashProviders,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                ScannedFile scannedFile = await ProcessFileAsync(filePath, dirPathLength, settings, cancellationToken).ConfigureAwait(false);
-                await CalculateHashesAsync(settings, scannedFile, filePath, hashProviders, cancellationToken).ConfigureAwait(false);
+                ScannedFile scannedFile = await ProcessFileAsync(filePath, dirPathLength, fileIndex, hashProviders, settings, cancellationToken).ConfigureAwait(false);
                 return scannedFile;
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
@@ -211,21 +214,32 @@ namespace OmniCore.Modules.FMMS.Services
         /// <param name="settings">Настройки сканирования (пользовательские расширения архивов, правила подсчёта страниц).</param>
         /// <param name="cancellationToken">Токен отмены.</param>
         /// <returns>Объект <see cref="ScannedFile"/> с заполненными метаданными.</returns>
-        private async Task<ScannedFile> ProcessFileAsync(string filePath, int dirPathLength, FilesScanningSettings settings, CancellationToken cancellationToken)
+        private async Task<ScannedFile> ProcessFileAsync(string filePath,
+            int dirPathLength,
+            int fileIndex,
+            IReadOnlyList<(string AlgorithmName, IHashProvider Provider)> hashProviders,
+            FilesScanningSettings settings,
+            CancellationToken cancellationToken = default)
         {
             FileInfo fileInfo = new(filePath);
+            string fileExtension = fileInfo.Extension.ToLowerInvariant();
+            long fileSize = fileInfo.Length;
+
             string relativeFilePath = GetRelativePath(filePath, dirPathLength);
+            int pagesCount = await GetPagesCountAsync(fileExtension, filePath, settings.PagesCountCustomRules, cancellationToken).ConfigureAwait(false);
+            Dictionary<string, string> hashes = await CalculateHashesAsync(settings.Hashing, fileSize, filePath, hashProviders, cancellationToken).ConfigureAwait(false);
 
             ScannedFile result = new()
             {
+                Id = fileIndex,
                 Name = relativeFilePath,
-                Extension = fileInfo.Extension.ToLowerInvariant(),
+                Extension = fileExtension,
                 FullPath = fileInfo.FullName,
-                Size = fileInfo.Length,
+                Size = fileSize,
+                PagesCount = pagesCount,
+                Hashes = hashes,
                 IsArchive = settings.CustomArchiveExtensions.Contains(fileInfo.Extension)
             };
-
-            result.PagesCount = await GetPagesCountAsync(result, filePath, settings, cancellationToken).ConfigureAwait(false);
 
             return result;
         }
@@ -244,7 +258,6 @@ namespace OmniCore.Modules.FMMS.Services
         /// <summary>
         /// Определяет количество страниц файла на основе его расширения.
         /// </summary>
-        /// <param name="file">Объект файла с метаданными (используется расширение).</param>
         /// <param name="filePath">Полный путь к файлу.</param>
         /// <param name="settings">Настройки сканирования (пользовательские правила подсчёта страниц).</param>
         /// <param name="cancellationToken">Токен отмены.</param>
@@ -254,13 +267,13 @@ namespace OmniCore.Modules.FMMS.Services
         /// <para>Для остальных расширений проверяется наличие пользовательского правила в
         /// <see cref="FilesScanningSettings.PagesCountCustomRules"/>.</para>
         /// </remarks>
-        private async Task<int> GetPagesCountAsync(ScannedFile file, string filePath, FilesScanningSettings settings, CancellationToken cancellationToken)
+        private async Task<int> GetPagesCountAsync(string fileExtension, string filePath, Dictionary<string, int> pagesCountCustomRules, CancellationToken cancellationToken = default)
         {
-            if (file.Extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            if (fileExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
             {
                 return await TryGetPdfPagesCountAsync(filePath, cancellationToken).ConfigureAwait(false);
             }
-            else if (settings.PagesCountCustomRules.TryGetValue(file.Extension, out int customPages))
+            else if (pagesCountCustomRules.TryGetValue(fileExtension, out int customPages))
             {
                 return customPages;
             }
@@ -278,7 +291,7 @@ namespace OmniCore.Modules.FMMS.Services
         /// При неудаче или исключении записывает ошибку в лог и возвращает <c>-1</c>,
         /// не прерывая процесс сканирования.
         /// </remarks>
-        private async Task<int> TryGetPdfPagesCountAsync(string filePath, CancellationToken cancellationToken)
+        private async Task<int> TryGetPdfPagesCountAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -332,25 +345,27 @@ namespace OmniCore.Modules.FMMS.Services
         /// <para>Результаты записываются в словарь <see cref="ScannedFile.Hashes"/>
         /// с ключом, равным имени алгоритма.</para>
         /// </remarks>
-        private async Task CalculateHashesAsync(
-            FilesScanningSettings settings,
-            ScannedFile scannedFile,
+        private async Task<Dictionary<string, string>> CalculateHashesAsync(
+            HashingSettings settings,
+            long fileSize,
             string filePath,
             IReadOnlyList<(string AlgorithmName, IHashProvider Provider)> hashProviders,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
-            if (hashProviders.Count == 0 || !IsEligibleForHashing(settings, scannedFile))
+            if (hashProviders.Count == 0 || !IsEligibleForHashing(settings, fileSize))
             {
-                return;
+                return [];
             }
 
-            if (settings.Hashing.CalculateInParallel && hashProviders.Count > 1)
+            if (settings.CalculateInParallel && settings.MaxDegreeOfParallelism > 1 && hashProviders.Count > 1)
             {
-                await CalculateHashesInParallelAsync(hashProviders, filePath, settings.Hashing.OutputFormat, scannedFile, cancellationToken).ConfigureAwait(false);
+                // Parallel
+                return await CalculateHashesInParallelAsync(hashProviders, filePath, settings.OutputFormat, settings.MaxDegreeOfParallelism, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                await CalculateHashesSequentiallyAsync(hashProviders, filePath, settings.Hashing.OutputFormat, scannedFile, cancellationToken).ConfigureAwait(false);
+                // Not Parallel
+                return await CalculateHashesSequentiallyAsync(hashProviders, filePath, settings.OutputFormat, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -360,9 +375,9 @@ namespace OmniCore.Modules.FMMS.Services
         /// <param name="settings">Настройки хеширования.</param>
         /// <param name="scannedFile">Объект файла с информацией о размере.</param>
         /// <returns><see langword="true"/>, если файл не превышает лимит или лимит не задан; иначе <see langword="false"/>.</returns>
-        private static bool IsEligibleForHashing(FilesScanningSettings settings, ScannedFile scannedFile)
+        private static bool IsEligibleForHashing(HashingSettings settings, long fileSize)
         {
-            return settings.Hashing.MaxFileSizeBytes <= 0 || scannedFile.Size <= settings.Hashing.MaxFileSizeBytes;
+            return settings.MaxFileSizeBytes <= 0 || fileSize <= settings.MaxFileSizeBytes;
         }
 
         /// <summary>
@@ -371,7 +386,6 @@ namespace OmniCore.Modules.FMMS.Services
         /// <param name="providers">Список провайдеров хеширования.</param>
         /// <param name="filePath">Полный путь к файлу.</param>
         /// <param name="format">Формат вывода хеша (например, LowerHex, UpperHex).</param>
-        /// <param name="scannedFile">Объект файла для записи результатов.</param>
         /// <param name="cancellationToken">Токен отмены.</param>
         /// <remarks>
         /// <para>Все алгоритмы запускаются одновременно через <see cref="Task.WhenAll"/>.</para>
@@ -379,24 +393,38 @@ namespace OmniCore.Modules.FMMS.Services
         /// но может вызвать троттлинг на HDD.</para>
         /// <para>Ошибки в одном алгоритме не влияют на вычисление остальных.</para>
         /// </remarks>
-        private async Task CalculateHashesInParallelAsync(
+        private async Task<Dictionary<string, string>> CalculateHashesInParallelAsync(
             IReadOnlyList<(string AlgorithmName, IHashProvider Provider)> providers,
             string filePath,
             HashOutputFormat format,
-            ScannedFile scannedFile,
-            CancellationToken cancellationToken)
+            int maxDegreeOfParallelism = 2,
+            CancellationToken cancellationToken = default)
         {
-            IEnumerable<Task<(string AlgorithmName, string Hash, bool Success)>> tasks = providers.Select(p => ComputeSingleHashAsync(p.Provider, p.AlgorithmName, filePath, format, cancellationToken));
-            (string AlgorithmName, string Hash, bool Success)[] results = await Task.WhenAll(tasks).ConfigureAwait(false);
+            ArgumentNullException.ThrowIfNull(providers);
+            ArgumentNullException.ThrowIfNull(filePath);
 
-            foreach ((string AlgorithmName, string Hash, bool Success) result in results)
+            ConcurrentDictionary<string, string> results = new();
+
+            ParallelOptions parallelOptions = new()
             {
-                if (result.Success)
+                MaxDegreeOfParallelism = maxDegreeOfParallelism == 0 ? -1 : maxDegreeOfParallelism,
+                CancellationToken = cancellationToken
+            };
+
+            await Parallel.ForEachAsync(providers, parallelOptions, async (provider, ct) =>
+            {
+                (string? hash, bool success) = await ComputeSingleHashAsync(
+                    provider.Provider, provider.AlgorithmName, filePath, format, ct)
+                    .ConfigureAwait(false);
+
+                if (success && hash is not null)
                 {
-                    scannedFile.Hashes[result.AlgorithmName] = result.Hash;
-                    LogHash(result.AlgorithmName, result.Hash);
+                    results[provider.AlgorithmName] = hash;
+                    LogHash(provider.AlgorithmName, hash);
                 }
-            }
+            }).ConfigureAwait(false);
+
+            return new Dictionary<string, string>(results);
         }
 
         /// <summary>
@@ -405,31 +433,33 @@ namespace OmniCore.Modules.FMMS.Services
         /// <param name="providers">Список провайдеров хеширования.</param>
         /// <param name="filePath">Полный путь к файлу.</param>
         /// <param name="format">Формат вывода хеша.</param>
-        /// <param name="scannedFile">Объект файла для записи результатов.</param>
         /// <param name="cancellationToken">Токен отмены.</param>
         /// <remarks>
         /// <para>Алгоритмы выполняются один за другим в порядке регистрации.</para>
         /// <para>На каждой итерации проверяется токен отмены для быстрого прерывания.</para>
         /// </remarks>
-        private async Task CalculateHashesSequentiallyAsync(
+        private async Task<Dictionary<string, string>> CalculateHashesSequentiallyAsync(
             IReadOnlyList<(string AlgorithmName, IHashProvider Provider)> providers,
             string filePath,
             HashOutputFormat format,
-            ScannedFile scannedFile,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
-            foreach ((string? algo, IHashProvider? provider) in providers)
+            Dictionary<string, string> results = [];
+
+            foreach ((string AlgorithmName, IHashProvider Provider) in providers)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                (string AlgorithmName, string Hash, bool Success) result = await ComputeSingleHashAsync(provider, algo, filePath, format, cancellationToken).ConfigureAwait(false);
+                (string Hash, bool Success) = await ComputeSingleHashAsync(Provider, AlgorithmName, filePath, format, cancellationToken).ConfigureAwait(false);
 
-                if (result.Success)
+                if (Success)
                 {
-                    scannedFile.Hashes[algo] = result.Hash;
-                    LogHash(algo, result.Hash);
+                    results[AlgorithmName] = Hash;
+                    LogHash(AlgorithmName, Hash);
                 }
             }
+
+            return results;
         }
 
         /// <summary>
@@ -445,22 +475,22 @@ namespace OmniCore.Modules.FMMS.Services
         /// При возникновении исключения логирует ошибку и возвращает кортеж с <c>Success = false</c>,
         /// не прерывая выполнение остальных алгоритмов.
         /// </remarks>
-        private async Task<(string AlgorithmName, string Hash, bool Success)> ComputeSingleHashAsync(
+        private async Task<(string Hash, bool Success)> ComputeSingleHashAsync(
             IHashProvider provider,
             string algorithmName,
             string filePath,
             HashOutputFormat format,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                string hash = await provider.CalculateAsync(filePath, format, cancellationToken).ConfigureAwait(false);
-                return (algorithmName, hash, true);
+                string hash = await provider.CalculateAsync(filePath, format, cancellationToken: cancellationToken).ConfigureAwait(false);
+                return (hash, true);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger?.LogError(ex, "Failed to calculate {Algorithm} for \"{FilePath}\"", algorithmName, filePath);
-                return (algorithmName, string.Empty, false);
+                return (string.Empty, false);
             }
         }
 

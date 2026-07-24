@@ -12,15 +12,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Maui" Version="14.2.0" />
-    <PackageReference Include="itext" Version="9.6.0" />
-    <PackageReference Include="MudBlazor" Version="9.5.0" />
+    <PackageReference Include="CommunityToolkit.Maui" Version="14.2.2" />
+    <PackageReference Include="MudBlazor" Version="9.7.0" />
+    <PackageReference Include="PdfPig" Version="0.1.15" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OmniCore.Core\OmniCore.Core.csproj" />
     <ProjectReference Include="..\OmniCore.Hybrid.Abstractions\OmniCore.Hybrid.Abstractions.csproj" />
-    <ProjectReference Include="..\OmniCore.Modules.Hash.Abstractions\OmniCore.Modules.Hash.Abstractions.csproj" />
+    <ProjectReference Include="..\OmniCore.Modules.Abstractions\OmniCore.Modules.Abstractions.csproj" />
+    <ProjectReference Include="..\OmniCore.Modules.FMMS.Abstractions\OmniCore.Modules.FMMS.Abstractions.csproj" />
+    <ProjectReference Include="..\OmniCore.Modules.Hash.Providers\OmniCore.Modules.Hash.Providers.csproj" />
+    <ProjectReference Include="..\OmniCore.Shared.Core\OmniCore.Shared.Core.csproj" />
+    <ProjectReference Include="..\OmniCore.Shared.UI\OmniCore.Shared.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

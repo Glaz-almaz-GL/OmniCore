@@ -1,0 +1,31 @@
+﻿using OmniCore.Modules.FMMS.Abstractions.Enums;
+
+namespace OmniCore.Modules.FMMS.Abstractions.Models
+{
+    /// <summary>
+    /// Настройки сканированния директорий
+    /// </summary>
+    public record DirectoryScanningSettings
+    {
+        /// <summary>
+        /// Список индивидуальных расширений архивов для анализа
+        /// </summary>
+        public HashSet<string> CustomArchiveExtensions { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tb2", ".xz",
+            ".txz", ".lz", ".tlz", ".z", ".lzma", ".lzo", ".ar", ".cpio", ".iso",
+            ".dmg", ".wim", ".esd", ".squashfs", ".cramfs", ".jar", ".war", ".apk",
+            ".xpi", ".epub", ".s7z"
+        };
+
+        /// <summary>
+        /// Тип размера для отображения
+        /// </summary>
+        public FileSizeType DisplayedSizeType { get; set; } = FileSizeType.MB;
+
+        /// <summary>
+        /// Флаг, отвечающий за анализ скрытых директорий
+        /// </summary>
+        public bool IncludeHidden { get; set; } = false;
+    }
+}

@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
 using MudBlazor.Services;
@@ -8,16 +7,13 @@ using OmniCore.Core.Enums;
 using OmniCore.Core.Interfaces;
 using OmniCore.Modules.Hash.Abstractions.Factories;
 using OmniCore.Modules.Hash.Abstractions.Interfaces;
-using OmniCore.Modules.Hash.Abstractions.Providers.Cryptographic.Legacy;
-using OmniCore.Modules.Hash.Abstractions.Providers.Cryptographic.SHA2;
-using OmniCore.Modules.Hash.Abstractions.Providers.Cryptographic.Sha3;
-using OmniCore.Modules.Hash.Abstractions.Providers.NonCryptographic;
-using OmniCore.Modules.Hash.Abstractions.Providers.NonCryptographic.XXH;
-using OmniCore.Modules.Hash.Abstractions.Providers.NonCryptographic.XXH3;
+using OmniCore.Modules.Hash.Providers.Cryptographic.Legacy;
+using OmniCore.Modules.Hash.Providers.Cryptographic.SHA2;
+using OmniCore.Modules.Hash.Providers.Cryptographic.SHA3;
+using OmniCore.Modules.Hash.Providers.NonCryptographic;
+using OmniCore.Modules.Hash.Providers.NonCryptographic.XXH;
+using OmniCore.Modules.Hash.Providers.NonCryptographic.XXH3;
 using OmniCore.Modules.HashCalculator.Resources.Languages;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace OmniCore.Modules.HashCalculator
 {

@@ -1,0 +1,18 @@
+@using OmniCore.Modules.FMMS.Models
+@using OmniCore.Modules.FMMS.Resources.Languages
+@using Microsoft.Extensions.Localization
+@using MudBlazor
+@inject IStringLocalizer<FmmsResources> L
+@typeparam T
+
+<TemplateColumn T="T" Title="@L[Config.HeaderKey]">
+    <CellTemplate>
+        <MudText Typo="Typo.body2">
+            @Config.ValueSelector(context.Item)
+        </MudText>
+    </CellTemplate>
+</TemplateColumn>
+
+@code {
+    [Parameter] public ColumnConfig<T> Config { get; set; } = default!;
+}

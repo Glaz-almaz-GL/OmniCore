@@ -4,8 +4,12 @@
   <Project Path="OmniCore.Hybrid/OmniCore.Hybrid.csproj">
     <Deploy Solution="Debug|*" />
   </Project>
-  <Project Path="OmniCore.Modules.FileAggregator.Abstractions/OmniCore.Modules.FileAggregator.Abstractions.csproj" Id="96ac1928-405c-49bb-904b-d2ac7ec4fbeb" />
+  <Project Path="OmniCore.Modules.Abstractions/OmniCore.Modules.Abstractions.csproj" Id="fc7dd8e4-15fc-46d7-82c9-b5aa0cf726b5" />
+  <Project Path="OmniCore.Modules.FMMS.Abstractions/OmniCore.Modules.FMMS.Abstractions.csproj" />
   <Project Path="OmniCore.Modules.FMMS/OmniCore.Modules.FMMS.csproj" />
   <Project Path="OmniCore.Modules.Hash.Abstractions/OmniCore.Modules.Hash.Abstractions.csproj" Id="5fde0280-c1cf-4b18-9ce6-f860a75caa12" />
+  <Project Path="OmniCore.Modules.Hash.Providers/OmniCore.Modules.Hash.Providers.csproj" />
   <Project Path="OmniCore.Modules.HashCalculator/OmniCore.Modules.HashCalculator.csproj" Id="07bc59c4-0f9c-4716-8847-96cc9cafd319" />
+  <Project Path="OmniCore.Shared.Core/OmniCore.Shared.Core.csproj" />
+  <Project Path="OmniCore.Shared.UI/OmniCore.Shared.UI.csproj" />
 </Solution>

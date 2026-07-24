@@ -1,0 +1,27 @@
+﻿using OmniCore.Modules.FMMS.Abstractions.Enums;
+
+namespace OmniCore.Modules.FMMS.Abstractions.Models
+{
+    /// <summary>
+    /// Настройки видимости колонок
+    /// </summary>
+    public record AnalyzeFileSettings
+    {
+        /// <summary>
+        /// Видимость стандартных колонок
+        /// </summary>
+        public Dictionary<AnalyzeField, bool> FieldsToAnalyze { get; set; } = new()
+        {
+            { AnalyzeField.Id, true },
+            { AnalyzeField.Name, true },
+            { AnalyzeField.PagesCount, true },
+            { AnalyzeField.Extension, true },
+            { AnalyzeField.FullPath, false },
+            { AnalyzeField.IsArchive, false },
+            { AnalyzeField.IsArchiveEntry, false },
+            { AnalyzeField.CompressedSize, false },
+            { AnalyzeField.UnCompressedSize, false },
+            { AnalyzeField.Size, true }
+        };
+    }
+}
